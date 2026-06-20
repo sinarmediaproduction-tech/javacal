@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Jawa - Neptu, Hijriyah & Hari Baik</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;700&display=swap');
+
+        /* --- LAYAR --- */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .month-title-btn {
+            font-family: 'Oswald', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #000;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            line-height: 1;
+        }
+        .nav-arrow { display: none; }
+        .year-title-btn {
+            font-family: 'Oswald', sans-serif;
+            font-size: 44px;
+            font-weight: 700;
+            color: #d32f2f;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            line-height: 1;
+        }
+
+        .calendar-wrapper {
+            background-color: #fff;
+            width: 1000px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px 2px 12px;
+            height: 85px;
+            box-sizing: border-box;
+            overflow: hidden;
+            border: none;
+        }
+
+        .header-left,
+        .header-center,
+        .header-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+            justify-content: center;
+        }
+        .header-left {
+            align-items: flex-start;
+        }
+        .header-right {
+            align-items: flex-end;
+        }
+        .header-center {
+            align-items: center;
+            gap: 2px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 1.5fr repeat(5, 1fr);
+            border-bottom: 1px solid #000;
+            border-left: 1px solid #ccc;
+        }
+
+        .calendar-grid .date-cell:first-child,
+        .calendar-grid .day-name:first-child {
+            border-left: 1px solid #ccc;
+        }
+        .calendar-grid .day-name:first-child {
+            border-left: 1px solid #fff;
+        }
+        .calendar-grid .date-cell:last-child,
+        .calendar-grid .day-name:last-child {
+            border-right: 1px solid #ccc;
+        }
+        .calendar-grid .day-name:last-child {
+            border-right: 1px solid #fff;
+        }
+
+        .wuku-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 1.5fr repeat(5, 1fr);
+            background-color: #e0e0e0;
+            font-size: 9px;
+            text-align: center;
+            font-weight: bold;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            border-left: 1px solid #000;
+            border-right: 1px solid #000;
+        }
+        .wuku-cell {
+            border-right: 1px solid #fff;
+            padding: 2px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+        }
+        .wuku-cell:first-child {
+            border-left: none;
+        }
+        .wuku-cell:last-child {
+            border-right: none;
+        }
+        .wuku-cell.wuku-split {
+            font-size: 7px;
+            letter-spacing: -0.2px;
+            line-height: 1.1;
+            padding: 1px 0;
+        }
+        .wuku-center {
+            background-color: #fff;
+            letter-spacing: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .day-name {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Oswald', sans-serif;
+            font-size: calc(22px + 1pt);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #fff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .day-minggu {
+            background-color: #d32f2f;
+            cursor: pointer;
+        }
+
+        .date-cell {
+            position: relative;
+            border-right: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2px 0;
+        }
+        .big-number {
+            font-family: 'Oswald', sans-serif;
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+            color: #000;
+            margin-bottom: 6px;
+        }
+        .red-text {
+            color: #d32f2f;
+        }
+        .green-text {
+            color: #2e7d32;
+        }
+        .faded-text {
+            color: #aaa;
+        }
+
+        .jav-date {
+            font-size: 9px;
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #000;
+            font-weight: bold;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+        .jav-date.good-day {
+            color: #2e7d32;
+        }
+        .jav-date.bad-day {
+            color: #d32f2f;
+        }
+        .jav-date.red-text {
+            color: #d32f2f !important;
+        }
+
+        .neptu-label {
+            font-size: 8px;
+            position: absolute;
+            bottom: 2px;
+            left: 4px;
+            color: #555;
+            font-weight: bold;
+        }
+        .neptu-label.red-text {
+            color: #d32f2f;
+        }
+
+        .hijri-date {
+            font-size: 7px;
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            color: #777;
+            font-weight: normal;
+            letter-spacing: 0.2px;
+        }
+        .hijri-date.red-text {
+            color: #d32f2f;
+        }
+
+        .split-cell {
+            position: relative;
+        }
+        .split-top-left {
+            font-size: 16px;
+            position: absolute;
+            top: 2px;
+            left: 4px;
+        }
+        .split-bottom-right {
+            font-size: 20px;
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+        }
+        .split-jav-top {
+            font-size: 7px;
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #555;
+            font-weight: bold;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+        .split-jav-top.good-day {
+            color: #2e7d32;
+        }
+        .split-jav-top.bad-day {
+            color: #d32f2f;
+        }
+        .split-jav-top.red-text {
+            color: #d32f2f !important;
+        }
+
+        .split-jav-bottom {
+            font-size: 7px;
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #555;
+            font-weight: bold;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+        .split-jav-bottom.good-day {
+            color: #2e7d32;
+        }
+        .split-jav-bottom.bad-day {
+            color: #d32f2f;
+        }
+        .split-jav-bottom.red-text {
+            color: #d32f2f !important;
+        }
+
+        .split-hijri-top {
+            font-size: 6px;
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            color: #777;
+            font-weight: normal;
+        }
+        .split-hijri-top.red-text {
+            color: #d32f2f;
+        }
+        .split-hijri-bottom {
+            font-size: 6px;
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            color: #777;
+            font-weight: normal;
+        }
+        .split-hijri-bottom.red-text {
+            color: #d32f2f;
+        }
+
+        .footer {
+            padding: 6px 8px;
+            font-size: 8px;
+            background-color: #fafafa;
+            color: #000;
+            border: none;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px 8px;
+            align-items: start;
+            width: 100%;
+            overflow: hidden;
+        }
+        .footer-col {
+            text-align: left;
+            overflow: hidden;
+            word-break: break-word;
+        }
+        .footer-col.center {
+            text-align: left;
+        }
+        .footer p {
+            margin: 2px 0;
+        }
+        .holiday-red {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .mangsa-item {
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+        .mangsa-item strong {
+            color: #000;
+        }
+        .mangsa-item .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .mangsa-item .kejadian {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .mangsa-item .rentang {
+            color: #555;
+            font-size: 7px;
+        }
+        .mangsa-item .filosofi {
+            font-style: italic;
+            color: #2c3e50;
+            font-size: 7px;
+            display: block;
+            margin-top: 1px;
+        }
+
+        .month-info-left {
+            font-size: 8px;
+            color: #000;
+            text-align: left;
+            font-weight: normal;
+            letter-spacing: 0;
+            line-height: 1.1;
+            width: 100%;
+        }
+        .month-info-left .line1 {
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #000;
+        }
+        .month-info-left .line2 {
+            font-size: 9px;
+            color: #333;
+        }
+        .month-info-left .line3 {
+            font-size: 9px;
+            color: #555;
+            font-weight: normal;
+        }
+        .month-info-left .tahun-jawa {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .month-info-right {
+            font-size: 8px;
+            color: #000;
+            text-align: right;
+            font-weight: normal;
+            letter-spacing: 0;
+            line-height: 1.1;
+            width: 100%;
+        }
+        .month-info-right .line1 {
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #000;
+        }
+        .month-info-right .line2 {
+            font-size: 9px;
+            color: #333;
+        }
+        .month-info-right .line3 {
+            font-size: 9px;
+            color: #555;
+            font-weight: normal;
+        }
+        .month-info-right .tahun-jawa {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .windu-sancaya {
+            background-color: #000;
+            color: #fff;
+            padding: 1px 10px;
+            font-weight: bold;
+            font-size: 10px;
+            letter-spacing: 1px;
+            border-radius: 0px;
+            text-transform: uppercase;
+            font-family: 'Oswald', sans-serif;
+            border: 1px solid #000;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+        .windu-sancaya .tahun-windu {
+            color: #fff;
+            font-size: 11px;
+        }
+
+        /* Modal untuk memilih tanggal */
+        .date-picker-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .date-picker-modal.active {
+            display: flex;
+        }
+        .date-picker-box {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .date-picker-box h3 {
+            margin: 0 0 15px 0;
+            font-family: 'Oswald', sans-serif;
+            font-size: 20px;
+        }
+        .date-picker-box input {
+            font-size: 18px;
+            padding: 8px 12px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            width: 200px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .date-picker-box .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .date-picker-box button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .date-picker-box .btn-go {
+            background-color: #d32f2f;
+            color: #fff;
+        }
+        .date-picker-box .btn-go:hover {
+            background-color: #b71c1c;
+        }
+        .date-picker-box .btn-cancel {
+            background-color: #ccc;
+            color: #000;
+        }
+        .date-picker-box .btn-cancel:hover {
+            background-color: #aaa;
+        }
+
+        @media screen and (max-width: 1020px) {
+            .calendar-wrapper {
+                width: 100%;
+            }
+            .controls {
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .footer-grid {
+                grid-template-columns: repeat(5, 1fr) !important;
+            }
+        }
+        @media screen and (max-width: 600px) {
+            .footer-grid {
+                grid-template-columns: repeat(5, 1fr) !important;
+            }
+            .footer-col {
+                font-size: 7px;
+            }
+            .mangsa-item .filosofi {
+                font-size: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calendar-wrapper" id="calendarWrapper"></div>
+
+    <!-- Modal Pilih Tanggal -->
+    <div class="date-picker-modal" id="datePickerModal">
+        <div class="date-picker-box">
+            <h3>Pilih Tanggal</h3>
+            <input type="date" id="datePickerInput">
+            <div class="btn-group">
+                <button class="btn-go" onclick="goToDate()">Lompat</button>
+                <button class="btn-cancel" onclick="closeDatePicker()">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA NEPTU ---
+        const nilaiHari = {
+            0: 5, // Minggu
+            1: 4, // Senin
+            2: 3, // Selasa
+            3: 7, // Rabu
+            4: 8, // Kamis
+            5: 6, // Jumat
+            6: 9 // Sabtu
+        };
+        const nilaiPasaran = {
+            'Wage': 4,
+            'Kliwon': 8,
+            'Legi': 5,
+            'Pahing': 9,
+            'Pon': 7
+        };
+
+        function getNeptu(dayIndex, pasaranName) {
+            return nilaiHari[dayIndex] + nilaiPasaran[pasaranName];
+        }
+
+        // --- FUNGSI PANCASUDA ---
+        function getPancasuda(neptu) {
+            const sisa = neptu % 5;
+            let nama, keterangan, isGood;
+            switch (sisa) {
+                case 1:
+                    nama = "Sri";
+                    keterangan = "Kelimpahan rezeki";
+                    isGood = true;
+                    break;
+                case 2:
+                    nama = "Lungguh";
+                    keterangan = "Kehormatan & wibawa";
+                    isGood = true;
+                    break;
+                case 3:
+                    nama = "Gedhong";
+                    keterangan = "Kekayaan harta";
+                    isGood = true;
+                    break;
+                case 4:
+                    nama = "Lara";
+                    keterangan = "Penyakit / kesialan";
+                    isGood = false;
+                    break;
+                case 0:
+                    nama = "Pati";
+                    keterangan = "Musibah / kematian";
+                    isGood = false;
+                    break;
+                default:
+                    nama = "-";
+                    keterangan = "-";
+                    isGood = false;
+            }
+            return { sisa, nama, keterangan, isGood };
+        }
+
+        const namaBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER",
+            "DESEMBER"
+        ];
+        const hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const pasaran = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
+
+        const daftarWuku = [
+            { no: 1, name: "Sinta" }, { no: 2, name: "Landhep" }, { no: 3, name: "Wukir" },
+            { no: 4, name: "Kurantil" }, { no: 5, name: "Tolu" }, { no: 6, name: "Gumbreg" },
+            { no: 7, name: "Warigalit" }, { no: 8, name: "Warigagung" }, { no: 9, name: "Julungwangi" },
+            { no: 10, name: "Sungsang" }, { no: 11, name: "Galungan" }, { no: 12, name: "Kuningan" },
+            { no: 13, name: "Langkir" }, { no: 14, name: "Mandasiya" }, { no: 15, name: "Julungpujud" },
+            { no: 16, name: "Pahang" }, { no: 17, name: "Kuruwelut" }, { no: 18, name: "Marakeh" },
+            { no: 19, name: "Tambir" }, { no: 20, name: "Medangkungan" }, { no: 21, name: "Maktal" },
+            { no: 22, name: "Wuye" }, { no: 23, name: "Manahil" }, { no: 24, name: "Prangbakat" },
+            { no: 25, name: "Bala" }, { no: 26, name: "Wugu" }, { no: 27, name: "Wayang" },
+            { no: 28, name: "Kulawu" }, { no: 29, name: "Dukut" }, { no: 30, name: "Watugunung" }
+        ];
+
+        const namaTahunJawa = ["Alip", "Ehe", "Jimawal", "Je", "Dal", "Be", "Wawu", "Jimakir"];
+        const namaBulanSaka = ["Suro", "Sapar", "Mulud", "Bakda Mulud", "Jumadilawal", "Jumadilakir", "Rejeb", "Ruwah", "Pasa", "Sawal",
+            "Dulkangidah", "Besar"
+        ];
+        const namaBulanHijriyah = ["Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir", "Jumadil Awal", "Jumadil Akhir", "Rajab",
+            "Sya'ban", "Ramadhan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
+        ];
+
+        let currentStartMonth, currentYear;
+
+        function masehiToHijriyah(year, month, day) {
+            let jd = gregorianToJulian(year, month + 1, day);
+            return julianToHijri(jd);
+        }
+
+        function gregorianToJulian(year, month, day) {
+            if (month <= 2) { year -= 1;
+                month += 12; }
+            let a = Math.floor(year / 100);
+            let b = 2 - a + Math.floor(a / 4);
+            let jd = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + b - 1524.5;
+            return Math.floor(jd);
+        }
+
+        function julianToHijri(jd) {
+            const ISLAMIC_EPOCH = 1948439.5;
+            function islamicToJd(year, month, day) {
+                return day + Math.ceil(29.5 * (month - 1)) + (year - 1) * 354 +
+                    Math.floor((3 + 11 * year) / 30) + ISLAMIC_EPOCH - 1;
+            }
+            let jdHalf = Math.floor(jd) + 0.5;
+            let year = Math.floor((30 * (jdHalf - ISLAMIC_EPOCH) + 10646) / 10631);
+            let month = Math.min(12, Math.ceil((jdHalf - (29 + islamicToJd(year, 1, 1))) / 29.5) + 1);
+            let day = Math.round(jdHalf - islamicToJd(year, month, 1) + 1);
+            return { year: year, month: month, day: day };
+        }
+
+        function getTahunJawa(year, month) {
+
+            const hijri = masehiToHijriyah(year, month, 15);
+
+            let jawaYear = hijri.year + 512;
+
+            const siklus =
+                ((jawaYear - 1555) % 8 + 8) % 8;
+
+            return {
+                tahun: jawaYear,
+                nama: namaTahunJawa[siklus]
+            };
+        }
+
+        function getWinduSancaya(year) {
+            const winduNames = ["Adi", "Kuntara", "Sangara", "Sancaya"];
+            const anchorYear = 1869;
+            let diff = year - anchorYear;
+            if (diff < 0) { let cycles = Math.floor(Math.abs(diff) / 32) + 1;
+                diff += cycles * 32; }
+            let winduIndex = Math.floor(diff / 8) % 4;
+            let winduKe = Math.floor(diff / 8) + 1;
+            let winduName = winduNames[winduIndex];
+            let startYear = anchorYear + (winduKe - 1) * 8;
+            let endYear = startYear + 7;
+            return { nama: winduName, ke: winduKe, tahunMulai: startYear, tahunAkhir: endYear };
+        }
+
+        function getBulanSaka(year, month) {
+            let hijri = masehiToHijriyah(year, month, 15);
+            let jawaYear = getTahunJawa(year, month).tahun;
+            let sakaMonth = hijri.month;
+            return { year: jawaYear, month: sakaMonth, name: namaBulanSaka[sakaMonth - 1] || "-" };
+        }
+
+        function getBulanSakaPrev(year, month) {
+            let hijri = masehiToHijriyah(year, month, 15);
+            let prevMonth = hijri.month - 1;
+            let prevYear = getTahunJawa(year, month).tahun;
+            if (prevMonth < 1) { prevMonth = 12;
+                prevYear -= 1; }
+            return { name: namaBulanSaka[prevMonth - 1], month: prevMonth, year: prevYear };
+        }
+
+        function getBulanSakaNext(year, month) {
+            let hijri = masehiToHijriyah(year, month, 15);
+            let nextMonth = hijri.month + 1;
+            let nextYear = getTahunJawa(year, month).tahun;
+            if (nextMonth > 12) { nextMonth = 1;
+                nextYear += 1; }
+            return { name: namaBulanSaka[nextMonth - 1], month: nextMonth, year: nextYear };
+        }
+
+        function getBulanHijriyah(year, month) {
+
+            const h1 = masehiToHijriyah(year, month, 1);
+            const h2 = masehiToHijriyah(
+                year,
+                month,
+                new Date(year, month + 1, 0).getDate()
+            );
+
+            return {
+                name:
+                    h1.month === h2.month
+                    ? namaBulanHijriyah[h1.month - 1]
+                    : namaBulanHijriyah[h1.month - 1] +
+                      " / " +
+                      namaBulanHijriyah[h2.month - 1],
+                year: h1.year
+            };
+        }
+
+        function getBulanHijriyahNext(year, month) {
+            let hijri = masehiToHijriyah(year, month, 15);
+            let nextMonth = hijri.month + 1;
+            let nextYear = hijri.year;
+            if (nextMonth > 12) { nextMonth = 1;
+                nextYear += 1; }
+            return { year: nextYear, month: nextMonth, name: namaBulanHijriyah[nextMonth - 1] || "-" };
+        }
+
+        function getEaster(year) {
+            let a = year % 19,
+                b = Math.floor(year / 100),
+                c = year % 100;
+            let d = Math.floor(b / 4),
+                e = b % 4;
+            let f = Math.floor((b + 8) / 25),
+                g = Math.floor((b - f + 1) / 3);
+            let h = (19 * a + b - d - g + 15) % 30;
+            let i = Math.floor(c / 4),
+                k = c % 4;
+            let l = (32 + 2 * e + 2 * i - h - k) % 7;
+            let m = Math.floor((a + 11 * h + 22 * l) / 451);
+            let month = Math.floor((h + l - 7 * m + 114) / 31);
+            let day = ((h + l - 7 * m + 114) % 31) + 1;
+            return { day: day, month: month - 1 };
+        }
+
+        function getDynamicHolidays(year) {
+            let holidays = [];
+            let easter = getEaster(year);
+            let easterDate = new Date(year, easter.month, easter.day);
+            let goodFriday = new Date(easterDate);
+            goodFriday.setDate(easterDate.getDate() - 2);
+            holidays.push({ d: goodFriday.getDate(), m: goodFriday.getMonth(), name: "WAFAT ISA AL-MASIH" });
+            let ascension = new Date(easterDate);
+            ascension.setDate(easterDate.getDate() + 39);
+            holidays.push({ d: ascension.getDate(), m: ascension.getMonth(), name: "KENAIKAN ISA AL-MASIH" });
+            return holidays;
+        }
+
+        function getFixedHolidays(m) {
+            const fixed = {
+                0: [{ d: 1, name: "TAHUN BARU MASEHI" }],
+                4: [{ d: 1, name: "HARI BURUH INTERNASIONAL" }],
+                5: [{ d: 1, name: "HARI LAHIR PANCASILA" }],
+                7: [{ d: 17, name: "HARI KEMERDEKAAN RI" }],
+                11: [{ d: 25, name: "HARI RAYA NATAL" }]
+            };
+            return fixed[m] || [];
+        }
+
+        function getAllHolidays(year, month) {
+            let allHolidays = [];
+            getFixedHolidays(month).forEach(h => { allHolidays.push({ d: h.d, m: month, name: h.name }); });
+            getDynamicHolidays(year).forEach(h => { if (h.m === month) allHolidays.push(h); });
+            return allHolidays;
+        }
+
+        function isHoliday(year, month, day) {
+            return getAllHolidays(year, month).some(h => h.d === day && h.m === month);
+        }
+
+        const pranataMangsa = [{
+            id: "I",
+            nama: "Kasa",
+            candra: "Sotya Murca Saking Ngemban",
+            sm: 5,
+            sd: 22,
+            em: 7,
+            ed: 1,
+            cuaca: "Hujan mulai turun, udara segar",
+            angin: "Angin barat mulai bertiup",
+            dampak: "Daun berguguran, petani membakar jerami, menanam palawija",
+            kejadian: "-"
+        }, {
+            id: "II",
+            nama: "Karo",
+            candra: "Bantala Rengka",
+            sm: 7,
+            sd: 2,
+            em: 7,
+            ed: 24,
+            cuaca: "Puncak kemarau, udara panas dan kering",
+            angin: "Angin timur kering dan berdebu",
+            dampak: "Tanah sawah retak, masa paceklik",
+            kejadian: "Kekeringan mulai terasa"
+        }, {
+            id: "III",
+            nama: "Katiga",
+            candra: "Suta Manangis Ing Jro Bapa",
+            sm: 7,
+            sd: 25,
+            em: 8,
+            ed: 17,
+            cuaca: "Udara sangat panas, sumur mengering",
+            angin: "Angin timur kencang",
+            dampak: "Panen palawija (ubi, jagung), air susah",
+            kejadian: "Kekeringan memuncak"
+        }, {
+            id: "IV",
+            nama: "Kapat",
+            candra: "Waspa Kumembeng Jroning Kalbu",
+            sm: 8,
+            sd: 18,
+            em: 9,
+            ed: 12,
+            cuaca: "Peralihan ke musim hujan, langit mendung",
+            angin: "Angin barat mulai bertiup",
+            dampak: "Petani mulai menggarap sawah, burung manyar bersarang",
+            kejadian: "-"
+        }, {
+            id: "V",
+            nama: "Kalima",
+            candra: "Pancuran Emas Sumawur Ing Jagad",
+            sm: 9,
+            sd: 13,
+            em: 10,
+            ed: 8,
+            cuaca: "Awal musim hujan, hawa sejuk, hujan lebat",
+            angin: "Angin kencang, petir",
+            dampak: "Petani menebar benih padi, ular keluar dari liang",
+            kejadian: "Banjir mulai muncul"
+        }, {
+            id: "VI",
+            nama: "Kanem",
+            candra: "Rasa Mulya Kasuciyan",
+            sm: 10,
+            sd: 9,
+            em: 11,
+            ed: 21,
+            cuaca: "Musim hujan berlangsung, udara lembab",
+            angin: "Angin barat",
+            dampak: "Petani aktif di sawah, banyak buah-buahan",
+            kejadian: "-"
+        }, {
+            id: "VII",
+            nama: "Kapitu",
+            candra: "Wisa Kentir Ing Maruta",
+            sm: 11,
+            sd: 22,
+            em: 1,
+            ed: 2,
+            cuaca: "Puncak musim hujan, hujan terus-menerus",
+            angin: "Angin kencang, badai",
+            dampak: "Wabah penyakit, petani menanam padi",
+            kejadian: "Banjir besar, angin topan"
+        }, {
+            id: "VIII",
+            nama: "Kawolu",
+            candra: "Anjrah Jroning Kayun",
+            sm: 1,
+            sd: 3,
+            em: 1,
+            ed: 28,
+            cuaca: "Musim hujan mulai reda, udara sejuk",
+            angin: "Angin barat melemah",
+            dampak: "Padi mulai tinggi dan berbuah",
+            kejadian: "-"
+        }, {
+            id: "IX",
+            nama: "Kasanga",
+            candra: "Wedharing Wacana Mulya",
+            sm: 2,
+            sd: 1,
+            em: 2,
+            ed: 25,
+            cuaca: "Hujan berkurang, udara mulai panas",
+            angin: "Angin timur mulai bertiup",
+            dampak: "Musim padi berbuah, waktu tebang kayu",
+            kejadian: "-"
+        }, {
+            id: "X",
+            nama: "Kadasa",
+            candra: "Gedhong Mineb Jro Kalbu",
+            sm: 2,
+            sd: 26,
+            em: 3,
+            ed: 18,
+            cuaca: "Peralihan ke musim kemarau, panas menyengat",
+            angin: "Angin timur kencang",
+            dampak: "Padi menguning, panen padi dimulai",
+            kejadian: "-"
+        }, {
+            id: "XI",
+            nama: "Desta",
+            candra: "Sekar Lesahing Jagad",
+            sm: 3,
+            sd: 19,
+            em: 4,
+            ed: 11,
+            cuaca: "Musim kemarau, udara kering",
+            angin: "Angin timur",
+            dampak: "Panen raya, burung mengeram, waktu tebang kayu",
+            kejadian: "-"
+        }, {
+            id: "XII",
+            nama: "Sada",
+            candra: "Surya Numpak Ngarga",
+            sm: 4,
+            sd: 12,
+            em: 5,
+            ed: 21,
+            cuaca: "Memasuki musim kemarau puncak",
+            angin: "Angin timur kering",
+            dampak: "Petani menjemur dan menyimpan padi",
+            kejadian: "Kekeringan mulai terasa"
+        }];
+
+        function goToToday() {
+            const t = new Date();
+            const todayMonth = t.getMonth();
+            currentStartMonth = (todayMonth % 2 === 0) ? todayMonth : todayMonth - 1;
+            if (currentStartMonth < 0) currentStartMonth = 0;
+            currentYear = t.getFullYear();
+            generateCalendar();
+        }
+
+        // --- FUNGSI UNTUK MELOMPAT KE TANGGAL ---
+        function openDatePicker() {
+            document.getElementById('datePickerModal').classList.add('active');
+            // Set default ke hari ini
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('datePickerInput').value = `${year}-${month}-${day}`;
+        }
+
+        function closeDatePicker() {
+            document.getElementById('datePickerModal').classList.remove('active');
+        }
+
+        function goToDate() {
+            const input = document.getElementById('datePickerInput');
+            const val = input.value;
+            if (!val) return;
+
+            const parts = val.split('-');
+            if (parts.length !== 3) return;
+
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1; // JS month 0-based
+            const day = parseInt(parts[2]);
+
+            // Validasi tanggal
+            const testDate = new Date(year, month, day);
+            if (testDate.getFullYear() !== year || testDate.getMonth() !== month || testDate.getDate() !== day) {
+                alert('Tanggal tidak valid!');
+                return;
+            }
+
+            closeDatePicker();
+
+            // Set ke bulan yang mengandung tanggal tersebut
+            let startMonth = month;
+            if (startMonth % 2 !== 0) {
+                startMonth = month - 1;
+            }
+            if (startMonth < 0) startMonth = 0;
+
+            currentStartMonth = startMonth;
+            currentYear = year;
+
+            generateCalendar();
+        }
+
+        // Tutup modal dengan klik di luar
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('datePickerModal');
+            if (e.target === modal) {
+                closeDatePicker();
+            }
+        });
+
+        // --- FUNGSI WUKU ---
+        // PATCH: patokan baru 1 November 2026 = Sinta
+        function getWuku(year, month, day) {
+            const baseDate = new Date(2026, 10, 1); // 1 November 2026
+            const baseWukuIndex = 0;                // Sinta
+
+            const targetDate = new Date(year, month, day);
+
+            const diffDays = Math.floor(
+                (targetDate - baseDate) / 86400000
+            );
+
+            let wukuIndex =
+                (baseWukuIndex + Math.floor(diffDays / 7)) % 30;
+
+            if (wukuIndex < 0) wukuIndex += 30;
+
+            return daftarWuku[wukuIndex];
+        }
+
+        function getWukuForWeek(year, month, weekIndex) {
+            const startDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let firstDayOfWeek;
+            if (weekIndex === 0) {
+                firstDayOfWeek = 1;
+            } else {
+                const firstSunday = (startDay === 0) ? 1 : (8 - startDay);
+                firstDayOfWeek = firstSunday + (weekIndex - 1) * 7;
+            }
+
+            let clampedFirstDay = firstDayOfWeek;
+            if (clampedFirstDay > daysInMonth) clampedFirstDay = daysInMonth;
+            const wukuMain = getWuku(year, month, clampedFirstDay);
+
+            // PATCH: kolom minggu terakhir (index 4) bisa "menampung" 1-2 hari
+            // titipan dari baris ke-6 pada bulan yang butuh 6 baris kalender
+            // (lihat split-cell di getMonthData). Hari titipan itu selalu jatuh
+            // di hari Minggu, yaitu awal wuku BARU, jadi labelnya perlu digabung
+            // supaya tidak menampilkan wuku yang salah untuk hari-hari tsb.
+            if (weekIndex === 4) {
+                const totalCells = startDay + daysInMonth;
+                if (totalCells > 35) {
+                    const overflowFirstDay = firstDayOfWeek + 7;
+                    if (overflowFirstDay <= daysInMonth) {
+                        const wukuOverflow = getWuku(year, month, overflowFirstDay);
+                        if (wukuOverflow.name !== wukuMain.name) {
+                            return { name: wukuMain.name + ' / ' + wukuOverflow.name, split: true };
+                        }
+                    }
+                }
+            }
+
+            return wukuMain;
+        }
+
+        function getPasaran(date) {
+            const anchorDate = Date.UTC(1970, 0, 1);
+            const targetDate = Date.UTC(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate()
+            );
+
+            const diffDays = Math.floor(
+                (targetDate - anchorDate) / 86400000
+            );
+
+            const anchorPasaranIndex = 0; // Wage
+
+            return pasaran[
+                ((diffDays + anchorPasaranIndex) % 5 + 5) % 5
+            ];
+        }
+
+        function getMangsaInfo(m, year) {
+            let ringkas = "";
+            let cuaca = "";
+            let dampak = "";
+            pranataMangsa.forEach(pm => {
+                let startYear = (pm.nama === "Kapitu" && m === 11) ? year : year;
+                let endYear = (pm.nama === "Kapitu" && m === 0) ? year + 1 : year;
+                let startDate = new Date(startYear, pm.sm, pm.sd);
+                let endDate = new Date(endYear, pm.em, pm.ed);
+                let monthStart = startDate.getMonth();
+                let monthEnd = endDate.getMonth();
+                let yearStart = startDate.getFullYear();
+                let yearEnd = endDate.getFullYear();
+
+                let isInRange = false;
+                if (yearStart === yearEnd) {
+                    if (m >= monthStart && m <= monthEnd) isInRange = true;
+                } else {
+                    if (m >= monthStart || m <= monthEnd) isInRange = true;
+                }
+                if (pm.nama === "Kapitu" && m === 11) isInRange = true;
+                if (pm.nama === "Kapitu" && m === 0) isInRange = true;
+
+                if (isInRange) {
+                    let diffTime = Math.abs(endDate - startDate);
+                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    let startStr = `${pm.sd} ${namaBulan[pm.sm]} ${startYear}`;
+                    let endStr = `${pm.ed} ${namaBulan[pm.em]} ${endYear}`;
+
+                    ringkas += `<div class="mangsa-item">
+                        <strong>${pm.nama} (${pm.id})</strong> <span class="rentang">${diffDays} hr • ${startStr} - ${endStr}</span>
+                        <span class="filosofi">“${pm.candra}”</span>
+                    </div>`;
+
+                    cuaca +=
+                        `<div class="mangsa-item"><span class="label">Cuaca:</span> ${pm.cuaca} | <span class="label">Angin:</span> ${pm.angin}</div>`;
+
+                    let kejadianText = (pm.kejadian && pm.kejadian !== "-") ?
+                        ` <span class="label">Kejadian:</span> <span class="kejadian">${pm.kejadian}</span>` :
+                        "";
+                    dampak +=
+                        `<div class="mangsa-item"><span class="label">Dampak:</span> ${pm.dampak}${kejadianText}</div>`;
+                }
+            });
+            if (!ringkas) ringkas = "<span style='color:#999;'>Tidak ada</span>";
+            if (!cuaca) cuaca = "<span style='color:#999;'>Tidak ada</span>";
+            if (!dampak) dampak = "<span style='color:#999;'>Tidak ada</span>";
+            return { ringkas, cuaca, dampak };
+        }
+
+        function getHolidaysInfo(m, year) {
+            let allHolidays = getAllHolidays(year, m);
+            if (allHolidays.length === 0) return "";
+            let html = "";
+            allHolidays.forEach(h => {
+                html += `<p class="holiday-red">${h.d} ${namaBulan[m]} : ${h.name}</p>`;
+            });
+            return html;
+        }
+
+        function getMonthData(year, month) {
+            const data = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startDay = new Date(year, month, 1).getDay();
+            const prevDays = new Date(year, month, 0).getDate();
+
+            for (let i = 0; i < startDay; i++) data[i][0] = { date: prevDays - startDay + i + 1, type: 'prev' };
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                let dayOfWeek = (startDay + d - 1) % 7;
+                let weekCol = Math.floor((d + startDay - 1) / 7);
+                let currentDate = new Date(year, month, d);
+                let p = getPasaran(currentDate);
+                let isHolidayToday = isHoliday(year, month, d);
+                let neptu = getNeptu(dayOfWeek, p);
+                let pancasuda = getPancasuda(neptu);
+                let hijri = masehiToHijriyah(year, month, d);
+                let hijriStr = hijri.day + '/' + hijri.month;
+
+                if (weekCol === 5) {
+                    let hijriSplit = masehiToHijriyah(year, month, d);
+                    data[dayOfWeek][4].split = {
+                        date: d,
+                        type: 'current',
+                        pasaran: p,
+                        isSunday: dayOfWeek === 0,
+                        isHoliday: isHolidayToday,
+                        neptu: neptu,
+                        pancasuda: pancasuda,
+                        hijri: hijriSplit.day + '/' + hijriSplit.month
+                    };
+                } else {
+                    data[dayOfWeek][weekCol] = {
+                        date: d,
+                        type: 'current',
+                        pasaran: p,
+                        isSunday: dayOfWeek === 0,
+                        isHoliday: isHolidayToday,
+                        neptu: neptu,
+                        pancasuda: pancasuda,
+                        hijri: hijriStr
+                    };
+                }
+            }
+
+            let nextD = 1;
+            for (let dow = 0; dow <= 6; dow++) {
+                for (let w = 0; w <= 4; w++) {
+                    if (!data[dow][w]) data[dow][w] = { date: nextD++, type: 'next' };
+                }
+            }
+            return data;
+        }
+
+        function renderCell(cellData) {
+            if (!cellData) return `<div class="date-cell"></div>`;
+            let classes = "";
+            if (cellData.isSunday || cellData.isHoliday) {
+                classes = "red-text";
+            }
+
+            if (cellData.type !== 'current') {
+                return `<div class="date-cell"><span class="big-number faded-text ${classes}">${cellData.date}</span></div>`;
+            }
+
+            if (cellData.split) {
+                let topClasses = cellData.isSunday || cellData.isHoliday ? "red-text" : "";
+                let bottomClasses = cellData.split.isSunday || cellData.split.isHoliday ? "red-text" : "";
+                let topHijri = cellData.hijri || "";
+                let bottomHijri = cellData.split.hijri || "";
+
+                let topPc = cellData.pancasuda || getPancasuda(cellData.neptu);
+                let bottomPc = cellData.split.pancasuda || getPancasuda(cellData.split.neptu);
+                let topJavClass = topPc.isGood ? "good-day" : "bad-day";
+                let bottomJavClass = bottomPc.isGood ? "good-day" : "bad-day";
+                if (topClasses) topJavClass = "red-text";
+                if (bottomClasses) bottomJavClass = "red-text";
+
+                return `
+                    <div class="date-cell split-cell">
+                        <span class="split-top-left ${topClasses}">${cellData.date}</span>
+                        <span class="split-hijri-top ${topClasses}">${topHijri}</span>
+                        <span class="split-jav-top ${topJavClass}">${cellData.pasaran.toUpperCase()}</span>
+                        <span class="split-bottom-right ${bottomClasses}">${cellData.split.date}</span>
+                        <span class="split-hijri-bottom ${bottomClasses}">${bottomHijri}</span>
+                        <span class="split-jav-bottom ${bottomJavClass}">${cellData.split.pasaran.toUpperCase()}</span>
+                    </div>
+                `;
+            }
+
+            let combinedClass = (cellData.isSunday || cellData.isHoliday) ? "red-text" : "";
+            let neptu = cellData.neptu || getNeptu(0, cellData.pasaran);
+            let pancasuda = cellData.pancasuda || getPancasuda(neptu);
+            let javClass = pancasuda.isGood ? "good-day" : "bad-day";
+            if (combinedClass) javClass = "red-text";
+            let hijri = cellData.hijri || "";
+
+            return `<div class="date-cell">
+                <span class="big-number ${combinedClass}">${cellData.date}</span>
+                <span class="hijri-date ${combinedClass}">${hijri}</span>
+                <span class="jav-date ${javClass}">${cellData.pasaran.toUpperCase()}</span>
+                <span class="neptu-label ${combinedClass}">${neptu}</span>
+            </div>`;
+        }
+
+        let footerHeightCache = {};
+
+        function computeMaxFooterHeight(year) {
+            const wrapper = document.getElementById('calendarWrapper');
+            const probeWidth = (wrapper && wrapper.offsetWidth) ? wrapper.offsetWidth : 1000;
+
+            const probe = document.createElement('div');
+            probe.style.position = 'absolute';
+            probe.style.visibility = 'hidden';
+            probe.style.pointerEvents = 'none';
+            probe.style.left = '-9999px';
+            probe.style.top = '0';
+            probe.style.width = probeWidth + 'px';
+            document.body.appendChild(probe);
+
+            let maxH = 0;
+            for (let pm1 = 0; pm1 < 12; pm1 += 2) {
+                const py1 = year;
+                const pm2 = (pm1 + 1) % 12;
+                const py2 = (pm1 === 11) ? py1 + 1 : py1;
+
+                const pHolidays1 = getHolidaysInfo(pm1, py1);
+                const pHolidays2 = getHolidaysInfo(pm2, py2);
+                const pMangsa = getMangsaInfo(pm1, py1);
+
+                probe.innerHTML = `
+                        <div class="footer">
+                            <div class="footer-grid">
+                                <div class="footer-col">
+                                    <strong>LIBUR NASIONAL</strong><br>
+                                    ${pHolidays1 || '<span style="color:#999;">Tidak ada</span>'}
+                                </div>
+                                <div class="footer-col center">
+                                    <strong>PRANATA MONGSO</strong><br>
+                                    ${pMangsa.ringkas}
+                                </div>
+                                <div class="footer-col center">
+                                    <strong>Cuaca &amp; Angin</strong><br>
+                                    ${pMangsa.cuaca}
+                                </div>
+                                <div class="footer-col center">
+                                    <strong>Dampak &amp; Kejadian</strong><br>
+                                    ${pMangsa.dampak}
+                                </div>
+                                <div class="footer-col" style="text-align: right;">
+                                    <strong>LIBUR NASIONAL</strong><br>
+                                    ${pHolidays2 || '<span style="color:#999;">Tidak ada</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                const fEl = probe.querySelector('.footer');
+                const h = fEl.offsetHeight;
+                if (h > maxH) maxH = h;
+            }
+
+            document.body.removeChild(probe);
+            return maxH;
+        }
+
+        function applyFixedFooterHeight(year) {
+            if (!footerHeightCache[year]) {
+                footerHeightCache[year] = computeMaxFooterHeight(year);
+            }
+            const maxH = footerHeightCache[year];
+
+            const style = document.getElementById('fixedFooterStyle') || document.createElement('style');
+            style.id = 'fixedFooterStyle';
+            style.textContent = `.footer { height: ${maxH}px !important; box-sizing: border-box; overflow: hidden; }`;
+            document.head.appendChild(style);
+
+            return maxH;
+        }
+
+        function generateCalendar() {
+            let m1 = currentStartMonth;
+            let y1 = currentYear;
+            let m2 = (m1 + 1) % 12;
+            let y2 = (m1 === 11) ? y1 + 1 : y1;
+
+            const dataM1 = getMonthData(y1, m1);
+            const dataM2 = getMonthData(y2, m2);
+
+            let tahunJawa1 = getTahunJawa(y1, m1);
+            let tahunJawa2 = getTahunJawa(y2, m2);
+            let windu1 = getWinduSancaya(y1);
+            let windu2 = getWinduSancaya(y2);
+            let saka1 = getBulanSaka(y1, m1);
+            let saka2 = getBulanSaka(y2, m2);
+            let saka1Prev = getBulanSakaPrev(y1, m1);
+            let saka2Next = getBulanSakaNext(y2, m2);
+            let hijri1 = getBulanHijriyah(y1, m1);
+            let hijri1Next = getBulanHijriyahNext(y1, m1);
+            let hijri2 = getBulanHijriyah(y2, m2);
+            let hijri2Next = getBulanHijriyahNext(y2, m2);
+
+            let wukuM1 = [];
+            for (let w = 0; w < 5; w++) {
+                wukuM1.push(getWukuForWeek(y1, m1, w));
+            }
+
+            let wukuM2 = [];
+            for (let w = 0; w < 5; w++) {
+                wukuM2.push(getWukuForWeek(y2, m2, w));
+            }
+
+            let tahunDisplay = (y1 === y2) ? y1 : y1 + ' / ' + y2;
+
+            let html = `
+                    <div class="header">
+                        <div class="header-left">
+                            <div class="month-title-btn" onclick="prevMonth()" title="Bulan Sebelumnya">
+                                <span class="nav-arrow">&#9664;</span>
+                                ${namaBulan[m1]}
+                            </div>
+                            <div class="month-info-left">
+                                <div class="line1">${saka1Prev.name.toUpperCase()} - ${saka1.name.toUpperCase()}</div>
+                                <div class="line2">${hijri1.name.toUpperCase()} - ${hijri1Next.name.toUpperCase()} ${hijri1.year} HIJRIYAH</div>
+                                <div class="line3"><span class="tahun-jawa">${tahunJawa1.tahun} ${tahunJawa1.nama.toUpperCase()}</span></div>
+                            </div>
+                        </div>
+                        <div class="header-center">
+                            <span class="year-title-btn" onclick="goToToday()" title="Klik untuk ke Hari Ini">${tahunDisplay}</span>
+                            <div class="windu-sancaya">
+                                WINDU ${windu1.nama.toUpperCase()} ${windu1.ke}
+                                <span class="tahun-windu">(${windu1.tahunMulai}-${windu1.tahunAkhir})</span>
+                            </div>
+                        </div>
+                        <div class="header-right">
+                            <div class="month-title-btn" onclick="nextMonth()" title="Bulan Selanjutnya" style="flex-direction: row-reverse;">
+                                ${namaBulan[m2]}
+                                <span class="nav-arrow">&#9654;</span>
+                            </div>
+                            <div class="month-info-right">
+                                <div class="line1">${saka2.name.toUpperCase()} - ${saka2Next.name.toUpperCase()}</div>
+                                <div class="line2">${hijri2.name.toUpperCase()} - ${hijri2Next.name.toUpperCase()} ${hijri2.year} HIJRIYAH</div>
+                                <div class="line3"><span class="tahun-jawa">${tahunJawa2.tahun} ${tahunJawa2.nama.toUpperCase()}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="wuku-row">
+                            ${wukuM1.map(w => `<div class="wuku-cell${w.split ? ' wuku-split' : ''}">${w.name.toUpperCase()}</div>`).join('')}
+                            <div class="wuku-cell wuku-center">WUKU</div>
+                            ${wukuM2.map(w => `<div class="wuku-cell${w.split ? ' wuku-split' : ''}">${w.name.toUpperCase()}</div>`).join('')}
+                        </div>
+                `;
+
+            const dayNames = ["MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"];
+            for (let row = 0; row < 7; row++) {
+                for (let col = 0; col < 5; col++) {
+                    let cellData = dataM1[row] && dataM1[row][col] ? dataM1[row][col] : null;
+                    html += renderCell(cellData);
+                }
+                let dayClass = row === 0 ? "day-minggu" : "";
+                let onclickAttr = row === 0 ? `onclick="openDatePicker()"` : "";
+                if (row === 6) {
+                    html +=
+                        `<div class="day-name ${dayClass}" onclick="exportPDF()" id="sabtBtn" title="Klik untuk Download PDF" style="cursor:pointer;">SABTU</div>`;
+                } else {
+                    html += `<div class="day-name ${dayClass}" ${onclickAttr}>${dayNames[row]}</div>`;
+                }
+                for (let col = 0; col < 5; col++) {
+                    let cellData = dataM2[row] && dataM2[row][col] ? dataM2[row][col] : null;
+                    html += renderCell(cellData);
+                }
+            }
+
+            html += `</div>`;
+
+            let holidays1 = getHolidaysInfo(m1, y1);
+            let holidays2 = getHolidaysInfo(m2, y2);
+            let mangsa = getMangsaInfo(m1, y1);
+
+            html += `
+                    <div class="footer">
+                        <div class="footer-grid">
+                            <div class="footer-col">
+                                <strong>LIBUR NASIONAL</strong><br>
+                                ${holidays1 || '<span style="color:#999;">Tidak ada</span>'}
+                            </div>
+                            <div class="footer-col center">
+                                <strong>PRANATA MONGSO</strong><br>
+                                ${mangsa.ringkas}
+                            </div>
+                            <div class="footer-col center">
+                                <strong>Cuaca &amp; Angin</strong><br>
+                                ${mangsa.cuaca}
+                            </div>
+                            <div class="footer-col center">
+                                <strong>Dampak &amp; Kejadian</strong><br>
+                                ${mangsa.dampak}
+                            </div>
+                            <div class="footer-col" style="text-align: right;">
+                                <strong>LIBUR NASIONAL</strong><br>
+                                ${holidays2 || '<span style="color:#999;">Tidak ada</span>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            document.getElementById('calendarWrapper').innerHTML = html;
+            applyFixedFooterHeight(y1);
+            requestAnimationFrame(() => { if (typeof enforceRatio === 'function') enforceRatio(); });
+        }
+
+        // --- FUNGSI EXPORT PDF ---
+        function exportPDF() {
+            const element = document.getElementById('calendarWrapper');
+
+            const m2 = (currentStartMonth + 1) % 12;
+            const y2 = currentStartMonth === 11 ? currentYear + 1 : currentYear;
+            const filename = `Kalender-Jawa-${namaBulan[currentStartMonth]}-${namaBulan[m2]}-${currentYear}.pdf`;
+
+            const pageW_mm = 280;
+            const pageH_mm = 180;
+            const margin_mm = 5;
+            const availW_mm = pageW_mm - margin_mm * 2;
+            const availH_mm = pageH_mm - margin_mm * 2;
+
+            const calWidth = 1000;
+
+            const prevWidth = element.style.width;
+            const prevOverflow = element.style.overflow;
+            const prevShadow = element.style.boxShadow;
+            element.style.width = calWidth + 'px';
+            element.style.overflow = 'visible';
+            element.style.boxShadow = 'none';
+
+            requestAnimationFrame(() => {
+                const calHeight = element.getBoundingClientRect().height || element.offsetHeight || 700;
+
+                html2canvas(element, {
+                    scale: 3,
+                    useCORS: true,
+                    allowTaint: true,
+                    letterRendering: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    width: calWidth,
+                    height: Math.ceil(calHeight),
+                    scrollX: 0,
+                    scrollY: -window.scrollY,
+                    windowWidth: calWidth,
+                    onclone: function(clonedDoc) {
+                        const el = clonedDoc.getElementById('calendarWrapper');
+                        if (el) {
+                            el.style.boxShadow = 'none';
+                            el.style.border = 'none';
+                            el.style.width = calWidth + 'px';
+                            el.style.overflow = 'visible';
+                            el.style.height = 'auto';
+                        }
+                        clonedDoc.body.style.overflow = 'visible';
+                        clonedDoc.body.style.height = 'auto';
+                        const link = clonedDoc.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href =
+                            'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;700&display=swap';
+                        clonedDoc.head.appendChild(link);
+                    }
+                }).then(function(canvas) {
+                    element.style.width = prevWidth;
+                    element.style.overflow = prevOverflow;
+                    element.style.boxShadow = prevShadow;
+
+                    const canvasW = canvas.width;
+                    const canvasH = canvas.height;
+
+                    const fitScale = Math.min(availW_mm / canvasW, availH_mm / canvasH);
+                    const imgW_mm = canvasW * fitScale;
+                    const imgH_mm = canvasH * fitScale;
+                    const offsetX = (pageW_mm - imgW_mm) / 2;
+                    const offsetY = (pageH_mm - imgH_mm) / 2;
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+                    const pdf = new window.jspdf.jsPDF({
+                        unit: 'mm',
+                        format: [pageW_mm, pageH_mm],
+                        orientation: 'landscape',
+                        compress: true
+                    });
+
+                    pdf.addImage(imgData, 'JPEG', offsetX, offsetY, imgW_mm, imgH_mm);
+                    pdf.save(filename);
+
+                }).catch(function(err) {
+                    element.style.width = prevWidth;
+                    element.style.overflow = prevOverflow;
+                    element.style.boxShadow = prevShadow;
+                    console.error('PDF Error:', err);
+                    alert('Gagal membuat PDF.\nCoba gunakan Ctrl+P → Save as PDF sebagai alternatif.');
+                });
+            });
+        }
+
+        function nextMonth() {
+            currentStartMonth += 2;
+            if (currentStartMonth > 11) { currentStartMonth -= 12;
+                currentYear++; }
+            generateCalendar();
+        }
+
+        function prevMonth() {
+            currentStartMonth -= 2;
+            if (currentStartMonth < 0) { currentStartMonth += 12;
+                currentYear--; }
+            generateCalendar();
+        }
+
+        // --- INISIALISASI ---
+        function initCalendar() {
+            const today = new Date();
+            const todayMonth = today.getMonth();
+            currentStartMonth = (todayMonth % 2 === 0) ? todayMonth : todayMonth - 1;
+            if (currentStartMonth < 0) currentStartMonth = 0;
+            currentYear = today.getFullYear();
+            generateCalendar();
+        }
+
+        // --- ENFORCE RATIO ---
+        function enforceRatio() {
+            const wrapper = document.getElementById('calendarWrapper');
+            if (!wrapper) return;
+
+            const W = wrapper.offsetWidth;
+            const targetH = Math.round(W * (180 / 280));
+
+            const header = wrapper.querySelector('.header');
+            const wukuRow = wrapper.querySelector('.wuku-row');
+            const footer = wrapper.querySelector('.footer');
+            const headerH = header ? header.offsetHeight : 85;
+            const wukuH = wukuRow ? wukuRow.offsetHeight : 18;
+            const footerH = footer ? footer.offsetHeight : 55;
+
+            const cellTotalH = targetH - headerH - wukuH - footerH - 4;
+            const cellH = Math.floor(cellTotalH / 7);
+
+            const style = document.getElementById('dynamicCellStyle') || document.createElement('style');
+            style.id = 'dynamicCellStyle';
+            style.textContent = `.date-cell { height: ${cellH}px !important; }`;
+            document.head.appendChild(style);
+        }
+
+        // Jalankan
+        initCalendar();
+        document.fonts.ready.then(() => { enforceRatio(); });
+    </script>
+
+</body>
+</html>
