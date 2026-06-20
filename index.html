@@ -1673,8 +1673,6 @@
                 let bottomPc = cellData.split.pancasuda || getPancasuda(cellData.split.neptu);
                 let topJavClass = topPc.isGood ? "good-day" : "bad-day";
                 let bottomJavClass = bottomPc.isGood ? "good-day" : "bad-day";
-                if (topClasses) topJavClass = "red-text";
-                if (bottomClasses) bottomJavClass = "red-text";
 
                 const topClick = `showDayDetail(${year}, ${month}, ${cellData.date})`;
                 const bottomClick = `showDayDetail(${year}, ${month}, ${cellData.split.date})`;
@@ -1695,7 +1693,6 @@
             let neptu = cellData.neptu || getNeptu(0, cellData.pasaran);
             let pancasuda = cellData.pancasuda || getPancasuda(neptu);
             let javClass = pancasuda.isGood ? "good-day" : "bad-day";
-            if (combinedClass) javClass = "red-text";
             let hijri = cellData.hijri || "";
 
             return `<div class="date-cell has-date" onclick="showDayDetail(${year}, ${month}, ${cellData.date})">
