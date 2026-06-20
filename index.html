@@ -211,6 +211,13 @@
             align-items: center;
             padding: 2px 0;
         }
+        .date-cell.has-date {
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .date-cell.has-date:hover {
+            background-color: #f2f2f2;
+        }
         .big-number {
             font-family: 'Oswald', sans-serif;
             font-size: 48px;
@@ -688,7 +695,6 @@
 
     <!-- Container tambahan untuk menu lain, sengaja di luar #calendarWrapper supaya tidak ikut ter-export ke PDF -->
     <div class="extra-menu-container" id="extraMenuContainer">
-        <div class="extra-menu-item" onclick="showTodayDetail()">Detail Hari Ini</div>
         <div class="extra-menu-item">Menu 2</div>
         <div class="extra-menu-item">Menu 3</div>
     </div>
@@ -1133,15 +1139,12 @@
             document.getElementById('datePickerModal').classList.remove('active');
         }
 
-        // --- DETAIL HARI INI ---
-        function showTodayDetail() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
-            const d = today.getDate();
-            const dayOfWeek = today.getDay();
+        // --- DETAIL TANGGAL (klik langsung pada tanggal di kalender) ---
+        function showDayDetail(year, month, d) {
+            const targetDate = new Date(year, month, d);
+            const dayOfWeek = targetDate.getDay();
 
-            const p = getPasaran(today);
+            const p = getPasaran(targetDate);
             const neptu = getNeptu(dayOfWeek, p);
             const pancasuda = getPancasuda(neptu);
             const wuku = getWuku(year, month, d);
@@ -1153,12 +1156,15 @@
             const holidaysToday = getAllHolidays(year, month).filter(h => h.d === d && h.m === month);
             const isGood = pancasuda.isGood;
 
+            const now = new Date();
+            const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
+
             const holidayHtml = holidaysToday.length
                 ? `<div class="tdd-holiday">${holidaysToday.map(h => h.name).join(', ')}</div>`
                 : '';
 
             const html = `
-                <h3>Detail Hari Ini</h3>
+                <h3>${isToday ? 'Detail Hari Ini' : 'Detail Tanggal'}</h3>
                 <div class="tdd-daybig">${hari[dayOfWeek]}</div>
                 <div class="tdd-dateline">${d} ${namaBulan[month]} ${year}</div>
                 ${holidayHtml}
@@ -1179,6 +1185,11 @@
 
             document.getElementById('todayDetailBox').innerHTML = html;
             document.getElementById('todayDetailModal').classList.add('active');
+        }
+
+        function showTodayDetail() {
+            const today = new Date();
+            showDayDetail(today.getFullYear(), today.getMonth(), today.getDate());
         }
 
         function closeTodayDetail() {
@@ -1420,7 +1431,7 @@
             return data;
         }
 
-        function renderCell(cellData) {
+        function renderCell(cellData, year, month) {
             if (!cellData) return `<div class="date-cell"></div>`;
             let classes = "";
             if (cellData.isSunday || cellData.isHoliday) {
@@ -1444,14 +1455,17 @@
                 if (topClasses) topJavClass = "red-text";
                 if (bottomClasses) bottomJavClass = "red-text";
 
+                const topClick = `showDayDetail(${year}, ${month}, ${cellData.date})`;
+                const bottomClick = `showDayDetail(${year}, ${month}, ${cellData.split.date})`;
+
                 return `
                     <div class="date-cell split-cell">
-                        <span class="split-top-left ${topClasses}">${cellData.date}</span>
-                        <span class="split-hijri-top ${topClasses}">${topHijri}</span>
-                        <span class="split-jav-top ${topJavClass}">${cellData.pasaran.toUpperCase()}</span>
-                        <span class="split-bottom-right ${bottomClasses}">${cellData.split.date}</span>
-                        <span class="split-hijri-bottom ${bottomClasses}">${bottomHijri}</span>
-                        <span class="split-jav-bottom ${bottomJavClass}">${cellData.split.pasaran.toUpperCase()}</span>
+                        <span class="split-top-left ${topClasses}" onclick="${topClick}" style="cursor:pointer;">${cellData.date}</span>
+                        <span class="split-hijri-top ${topClasses}" onclick="${topClick}" style="cursor:pointer;">${topHijri}</span>
+                        <span class="split-jav-top ${topJavClass}" onclick="${topClick}" style="cursor:pointer;">${cellData.pasaran.toUpperCase()}</span>
+                        <span class="split-bottom-right ${bottomClasses}" onclick="${bottomClick}" style="cursor:pointer;">${cellData.split.date}</span>
+                        <span class="split-hijri-bottom ${bottomClasses}" onclick="${bottomClick}" style="cursor:pointer;">${bottomHijri}</span>
+                        <span class="split-jav-bottom ${bottomJavClass}" onclick="${bottomClick}" style="cursor:pointer;">${cellData.split.pasaran.toUpperCase()}</span>
                     </div>
                 `;
             }
@@ -1463,7 +1477,7 @@
             if (combinedClass) javClass = "red-text";
             let hijri = cellData.hijri || "";
 
-            return `<div class="date-cell">
+            return `<div class="date-cell has-date" onclick="showDayDetail(${year}, ${month}, ${cellData.date})">
                 <span class="big-number ${combinedClass}">${cellData.date}</span>
                 <span class="hijri-date ${combinedClass}">${hijri}</span>
                 <span class="jav-date ${javClass}">${cellData.pasaran.toUpperCase()}</span>
@@ -1625,7 +1639,7 @@
             for (let row = 0; row < 7; row++) {
                 for (let col = 0; col < 5; col++) {
                     let cellData = dataM1[row] && dataM1[row][col] ? dataM1[row][col] : null;
-                    html += renderCell(cellData);
+                    html += renderCell(cellData, y1, m1);
                 }
                 let dayClass = row === 0 ? "day-minggu" : "";
                 let onclickAttr = row === 0 ? `onclick="openDatePicker()"` : "";
@@ -1637,7 +1651,7 @@
                 }
                 for (let col = 0; col < 5; col++) {
                     let cellData = dataM2[row] && dataM2[row][col] ? dataM2[row][col] : null;
-                    html += renderCell(cellData);
+                    html += renderCell(cellData, y2, m2);
                 }
             }
 
