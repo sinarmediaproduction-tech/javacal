@@ -819,6 +819,23 @@
             margin-top: 2px;
             line-height: 1.3;
         }
+        .primbon-disclaimer {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            text-align: left;
+            font-size: 9.5px;
+            line-height: 1.5;
+            color: #999;
+        }
+        .primbon-disclaimer strong {
+            display: block;
+            color: #777;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
 
         @media screen and (max-width: 1020px) {
             .calendar-wrapper {
@@ -1081,6 +1098,13 @@
 
                 <div class="primbon-section-title">Baik/Buruk untuk Acara</div>
                 ${acaraHtml}
+
+                <div class="primbon-disclaimer">
+                    <strong>Catatan</strong>
+                    Konten Primbon ini disajikan sebagai warisan budaya dan tradisi Jawa, bukan bagian dari ajaran atau tuntunan agama mana pun. Penanggalan, weton, neptu, dan pancasuda merupakan sistem petungan budaya leluhur yang diwariskan secara turun-temurun, bukan sumber hukum agama.
+                    <br><br>
+                    Keyakinan tentang baik-buruknya suatu hari, rezeki, jodoh, dan nasib sepenuhnya berada di tangan Tuhan Yang Maha Esa. Informasi di sini bersifat referensi budaya dan pelestarian tradisi, bukan untuk dijadikan sandaran utama dalam mengambil keputusan hidup.
+                </div>
 
                 <button class="btn-cancel" style="margin-top:16px;" onclick="closePrimbonModal()">Tutup</button>
             `;
