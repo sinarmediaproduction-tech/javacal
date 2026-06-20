@@ -752,6 +752,74 @@
             background-color: #b71c1c;
         }
 
+        /* Box untuk modal Primbon Hari Ini */
+        .primbon-box {
+            width: 340px;
+        }
+        .primbon-section-title {
+            margin-top: 14px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            text-align: left;
+        }
+        .primbon-pantangan-list {
+            text-align: left;
+            font-size: 12px;
+            color: #333;
+            margin: 6px 0 0 18px;
+            padding: 0;
+        }
+        .primbon-pantangan-list li {
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .primbon-acara-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .pa-nama {
+            font-weight: bold;
+            font-size: 12px;
+            color: #000;
+        }
+        .pa-status {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 3px 9px;
+            border-radius: 10px;
+            color: #fff;
+            white-space: nowrap;
+        }
+        .pa-status.pa-verygood {
+            background-color: #1b5e20;
+        }
+        .pa-status.pa-good {
+            background-color: #2e7d32;
+        }
+        .pa-status.pa-bad {
+            background-color: #d32f2f;
+        }
+        .pa-status.pa-avoid {
+            background-color: #7b0000;
+        }
+        .pa-ket {
+            font-size: 10px;
+            color: #777;
+            text-align: left;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
         @media screen and (max-width: 1020px) {
             .calendar-wrapper {
                 width: 100%;
@@ -792,7 +860,7 @@
     <!-- Container tambahan untuk menu lain, sengaja di luar #calendarWrapper supaya tidak ikut ter-export ke PDF -->
     <div class="extra-menu-container" id="extraMenuContainer">
         <div class="extra-menu-item" onclick="openHolidayForm()">Libur Nasional</div>
-        <div class="extra-menu-item">Menu 3</div>
+        <div class="extra-menu-item" onclick="showPrimbonToday()">Primbon Hari Ini</div>
     </div>
 
     <!-- Modal Pilih Tanggal -->
@@ -830,6 +898,11 @@
                 <button class="btn-cancel" onclick="closeHolidayForm()">Tutup</button>
             </div>
         </div>
+    </div>
+
+    <!-- Modal Primbon Hari Ini -->
+    <div class="date-picker-modal" id="primbonModal">
+        <div class="day-detail-box primbon-box" id="primbonBox"></div>
     </div>
 
     <script>
@@ -891,6 +964,133 @@
                     isGood = false;
             }
             return { sisa, nama, keterangan, isGood };
+        }
+
+        // --- DATA PRIMBON: PANTANGAN HARIAN (logika baku, berdasarkan hari & pasaran) ---
+        const PANTANGAN_HARI = {
+            0: "Hindari memulai urusan utang-piutang atau pinjam-meminjam.",
+            1: "Hindari memulai pekerjaan besar sebelum matahari terbit.",
+            2: "Hindari menebang pohon besar atau membongkar bangunan.",
+            3: "Hindari bepergian jauh ke arah barat.",
+            4: "Hindari menggelar acara besar di malam hari.",
+            5: "Hindari memulai perjalanan jauh ke arah selatan.",
+            6: "Hindari mengadakan perjalanan jauh ke arah utara."
+        };
+
+        const PANTANGAN_PASARAN = {
+            'Legi': "Hindari bepergian ke arah selatan untuk urusan penting.",
+            'Pahing': "Hindari menggelar hajatan besar atau pesta.",
+            'Pon': "Hindari pindah rumah atau pindah tempat tinggal.",
+            'Wage': "Hindari memulai usaha atau pekerjaan baru.",
+            'Kliwon': "Hindari keluar malam hari tanpa keperluan mendesak."
+        };
+
+        // --- DATA PRIMBON: KELAYAKAN ACARA (berdasarkan kategori Pancasuda) ---
+        const PRIMBON_ACARA_LIST = ['Pernikahan', 'Pindah Rumah', 'Membuka Usaha', 'Bepergian Jauh'];
+
+        const PRIMBON_ACARA_MAP = {
+            'Sri': {
+                'Pernikahan': { status: 'baik', ket: 'Mendukung kelimpahan rezeki rumah tangga baru.' },
+                'Pindah Rumah': { status: 'baik', ket: 'Membawa berkah rezeki di tempat tinggal baru.' },
+                'Membuka Usaha': { status: 'sangat baik', ket: 'Dipercaya membawa kelancaran rezeki usaha.' },
+                'Bepergian Jauh': { status: 'baik', ket: 'Perjalanan cenderung lancar dan membawa hasil baik.' }
+            },
+            'Lungguh': {
+                'Pernikahan': { status: 'sangat baik', ket: 'Membawa kehormatan & wibawa bagi kedua mempelai.' },
+                'Pindah Rumah': { status: 'baik', ket: 'Mendukung kedudukan & nama baik di lingkungan baru.' },
+                'Membuka Usaha': { status: 'baik', ket: 'Mendukung kepercayaan & nama baik usaha.' },
+                'Bepergian Jauh': { status: 'baik', ket: 'Cocok untuk urusan yang berkaitan dengan jabatan/kehormatan.' }
+            },
+            'Gedhong': {
+                'Pernikahan': { status: 'baik', ket: 'Mendukung kemapanan harta rumah tangga.' },
+                'Pindah Rumah': { status: 'sangat baik', ket: 'Dipercaya membawa kemapanan harta di rumah baru.' },
+                'Membuka Usaha': { status: 'baik', ket: 'Mendukung penumpukan modal & aset usaha.' },
+                'Bepergian Jauh': { status: 'baik', ket: 'Cocok untuk urusan jual-beli atau investasi.' }
+            },
+            'Lara': {
+                'Pernikahan': { status: 'kurang baik', ket: 'Berpotensi membawa masalah kesehatan/emosi, sebaiknya dihindari.' },
+                'Pindah Rumah': { status: 'kurang baik', ket: 'Rentan membawa ketidaknyamanan di tempat baru.' },
+                'Membuka Usaha': { status: 'kurang baik', ket: 'Berpotensi menghadapi hambatan di awal usaha.' },
+                'Bepergian Jauh': { status: 'hindari', ket: 'Rawan gangguan kesehatan atau kendala kecil di perjalanan.' }
+            },
+            'Pati': {
+                'Pernikahan': { status: 'hindari', ket: 'Dipercaya membawa kesialan besar, sangat tidak dianjurkan.' },
+                'Pindah Rumah': { status: 'hindari', ket: 'Dipercaya membawa musibah di tempat tinggal baru.' },
+                'Membuka Usaha': { status: 'hindari', ket: 'Berisiko membawa kegagalan usaha.' },
+                'Bepergian Jauh': { status: 'hindari', ket: 'Sangat tidak dianjurkan, risiko musibah dalam perjalanan.' }
+            }
+        };
+
+        function statusToClass(status) {
+            switch (status) {
+                case 'sangat baik': return 'pa-verygood';
+                case 'baik': return 'pa-good';
+                case 'kurang baik': return 'pa-bad';
+                case 'hindari': return 'pa-avoid';
+                default: return '';
+            }
+        }
+
+        function getPrimbonHariIni(year, month, d) {
+            const targetDate = new Date(year, month, d);
+            const dayOfWeek = targetDate.getDay();
+            const p = getPasaran(targetDate);
+            const neptu = getNeptu(dayOfWeek, p);
+            const pancasuda = getPancasuda(neptu);
+
+            const pantanganHari = PANTANGAN_HARI[dayOfWeek] || '-';
+            const pantanganPasaran = PANTANGAN_PASARAN[p] || '-';
+            const acaraMap = PRIMBON_ACARA_MAP[pancasuda.nama] || {};
+            const acara = PRIMBON_ACARA_LIST.map(nama => {
+                const info = acaraMap[nama] || { status: '-', ket: '-' };
+                return { nama, status: info.status, ket: info.ket };
+            });
+
+            return { dayOfWeek, pasaran: p, neptu, pancasuda, pantanganHari, pantanganPasaran, acara };
+        }
+
+        function showPrimbonToday() {
+            const today = new Date();
+            showPrimbonDetail(today.getFullYear(), today.getMonth(), today.getDate());
+        }
+
+        function showPrimbonDetail(year, month, d) {
+            const data = getPrimbonHariIni(year, month, d);
+            const now = new Date();
+            const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
+
+            const acaraHtml = data.acara.map(a => `
+                <div class="primbon-acara-row">
+                    <span class="pa-nama">${a.nama}</span>
+                    <span class="pa-status ${statusToClass(a.status)}">${a.status}</span>
+                </div>
+                <div class="pa-ket">${a.ket}</div>
+            `).join('');
+
+            const html = `
+                <h3>${isToday ? 'Primbon Hari Ini' : 'Primbon Tanggal'}</h3>
+                <div class="tdd-daybig">${hari[data.dayOfWeek]}</div>
+                <div class="tdd-dateline">${d} ${namaBulan[month]} ${year} &mdash; Weton ${hari[data.dayOfWeek]} ${data.pasaran}</div>
+
+                <div class="primbon-section-title">Pantangan / Larangan</div>
+                <ul class="primbon-pantangan-list">
+                    <li>${data.pantanganHari}</li>
+                    <li>${data.pantanganPasaran}</li>
+                    ${!data.pancasuda.isGood ? `<li>Hindari memulai aktivitas besar atau mengambil keputusan penting hari ini (${data.pancasuda.nama} &mdash; ${data.pancasuda.keterangan}).</li>` : ''}
+                </ul>
+
+                <div class="primbon-section-title">Baik/Buruk untuk Acara</div>
+                ${acaraHtml}
+
+                <button class="btn-cancel" style="margin-top:16px;" onclick="closePrimbonModal()">Tutup</button>
+            `;
+
+            document.getElementById('primbonBox').innerHTML = html;
+            document.getElementById('primbonModal').classList.add('active');
+        }
+
+        function closePrimbonModal() {
+            document.getElementById('primbonModal').classList.remove('active');
         }
 
         const namaBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER",
@@ -1460,6 +1660,10 @@
             const holidayModal = document.getElementById('holidayFormModal');
             if (e.target === holidayModal) {
                 closeHolidayForm();
+            }
+            const primbonModal = document.getElementById('primbonModal');
+            if (e.target === primbonModal) {
+                closePrimbonModal();
             }
         });
 
