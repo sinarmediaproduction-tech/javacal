@@ -54,6 +54,42 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             box-sizing: border-box;
         }
+
+        /* --- EXTRA MENU (di luar calendar-wrapper, TIDAK ikut ter-capture PDF) --- */
+        .extra-menu-container {
+            background-color: #fff;
+            width: 1000px;
+            max-width: 100%;
+            margin-top: 14px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1px;
+            background-color: #ccc;
+        }
+        .extra-menu-item {
+            flex: 1 1 0;
+            min-width: 120px;
+            background-color: #fff;
+            font-family: 'Oswald', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #000;
+            text-align: center;
+            padding: 14px 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .extra-menu-item:hover {
+            background-color: #d32f2f;
+            color: #fff;
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -520,9 +556,110 @@
             background-color: #aaa;
         }
 
+        /* Box untuk modal Detail Hari Ini */
+        .day-detail-box {
+            background-color: #fff;
+            padding: 22px 26px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 320px;
+            max-width: 88vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .day-detail-box h3 {
+            margin: 0 0 2px 0;
+            font-family: 'Oswald', sans-serif;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+        }
+        .tdd-daybig {
+            font-family: 'Oswald', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #d32f2f;
+            text-transform: uppercase;
+            line-height: 1.15;
+        }
+        .tdd-dateline {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .tdd-holiday {
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background-color: #d32f2f;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+        .tdd-grid {
+            text-align: left;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .tdd-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            padding: 7px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .tdd-label {
+            color: #999;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        .tdd-value {
+            text-align: right;
+            font-weight: 700;
+            font-size: 13px;
+            color: #000;
+        }
+        .tdd-value.tdd-good {
+            color: #2e7d32;
+        }
+        .tdd-value.tdd-bad {
+            color: #d32f2f;
+        }
+        .tdd-status {
+            margin-top: 14px;
+            padding: 8px;
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-size: 12px;
+            color: #fff;
+        }
+        .tdd-status.tdd-good-bg {
+            background-color: #2e7d32;
+        }
+        .tdd-status.tdd-bad-bg {
+            background-color: #d32f2f;
+        }
+
         @media screen and (max-width: 1020px) {
             .calendar-wrapper {
                 width: 100%;
+            }
+            .extra-menu-container {
+                width: 100%;
+            }
+            .extra-menu-item {
+                min-width: 90px;
+                font-size: 11px;
+                padding: 12px 6px;
             }
             .controls {
                 width: 100%;
@@ -549,6 +686,13 @@
 
     <div class="calendar-wrapper" id="calendarWrapper"></div>
 
+    <!-- Container tambahan untuk menu lain, sengaja di luar #calendarWrapper supaya tidak ikut ter-export ke PDF -->
+    <div class="extra-menu-container" id="extraMenuContainer">
+        <div class="extra-menu-item" onclick="showTodayDetail()">Detail Hari Ini</div>
+        <div class="extra-menu-item">Menu 2</div>
+        <div class="extra-menu-item">Menu 3</div>
+    </div>
+
     <!-- Modal Pilih Tanggal -->
     <div class="date-picker-modal" id="datePickerModal">
         <div class="date-picker-box">
@@ -559,6 +703,11 @@
                 <button class="btn-cancel" onclick="closeDatePicker()">Batal</button>
             </div>
         </div>
+    </div>
+
+    <!-- Modal Detail Hari Ini -->
+    <div class="date-picker-modal" id="todayDetailModal">
+        <div class="day-detail-box" id="todayDetailBox"></div>
     </div>
 
     <script>
@@ -984,6 +1133,58 @@
             document.getElementById('datePickerModal').classList.remove('active');
         }
 
+        // --- DETAIL HARI INI ---
+        function showTodayDetail() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const d = today.getDate();
+            const dayOfWeek = today.getDay();
+
+            const p = getPasaran(today);
+            const neptu = getNeptu(dayOfWeek, p);
+            const pancasuda = getPancasuda(neptu);
+            const wuku = getWuku(year, month, d);
+            const tahunJawa = getTahunJawa(year, month);
+            const windu = getWinduSancaya(year);
+            const saka = getBulanSaka(year, month);
+            const hijri = masehiToHijriyah(year, month, d);
+            const hijriBulan = namaBulanHijriyah[hijri.month - 1] || '-';
+            const holidaysToday = getAllHolidays(year, month).filter(h => h.d === d && h.m === month);
+            const isGood = pancasuda.isGood;
+
+            const holidayHtml = holidaysToday.length
+                ? `<div class="tdd-holiday">${holidaysToday.map(h => h.name).join(', ')}</div>`
+                : '';
+
+            const html = `
+                <h3>Detail Hari Ini</h3>
+                <div class="tdd-daybig">${hari[dayOfWeek]}</div>
+                <div class="tdd-dateline">${d} ${namaBulan[month]} ${year}</div>
+                ${holidayHtml}
+                <div class="tdd-grid">
+                    <div class="tdd-row"><span class="tdd-label">Weton</span><span class="tdd-value">${hari[dayOfWeek]} ${p}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Pasaran</span><span class="tdd-value">${p}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Neptu</span><span class="tdd-value">${neptu}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Wuku</span><span class="tdd-value">${wuku.name}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Pancasuda</span><span class="tdd-value ${isGood ? 'tdd-good' : 'tdd-bad'}">${pancasuda.nama} &mdash; ${pancasuda.keterangan}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Bulan Jawa</span><span class="tdd-value">${saka.name}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Tahun Jawa</span><span class="tdd-value">${tahunJawa.tahun} ${tahunJawa.nama}</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Windu</span><span class="tdd-value">${windu.nama} ${windu.ke} (${windu.tahunMulai}-${windu.tahunAkhir})</span></div>
+                    <div class="tdd-row"><span class="tdd-label">Hijriyah</span><span class="tdd-value">${hijri.day} ${hijriBulan} ${hijri.year} H</span></div>
+                </div>
+                <div class="tdd-status ${isGood ? 'tdd-good-bg' : 'tdd-bad-bg'}">${isGood ? 'HARI BAIK' : 'PERLU HATI-HATI'}</div>
+                <button class="btn-cancel" style="margin-top:14px;" onclick="closeTodayDetail()">Tutup</button>
+            `;
+
+            document.getElementById('todayDetailBox').innerHTML = html;
+            document.getElementById('todayDetailModal').classList.add('active');
+        }
+
+        function closeTodayDetail() {
+            document.getElementById('todayDetailModal').classList.remove('active');
+        }
+
         function goToDate() {
             const input = document.getElementById('datePickerInput');
             const val = input.value;
@@ -1023,6 +1224,10 @@
             const modal = document.getElementById('datePickerModal');
             if (e.target === modal) {
                 closeDatePicker();
+            }
+            const todayModal = document.getElementById('todayDetailModal');
+            if (e.target === todayModal) {
+                closeTodayDetail();
             }
         });
 
