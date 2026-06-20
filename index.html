@@ -656,6 +656,102 @@
             background-color: #d32f2f;
         }
 
+        /* Box untuk modal Form Libur Nasional Manual */
+        .holiday-form-box {
+            background-color: #fff;
+            padding: 24px 28px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 360px;
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .holiday-form-box h3 {
+            margin: 0 0 15px 0;
+            font-family: 'Oswald', sans-serif;
+            font-size: 20px;
+        }
+        .holiday-form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+            margin-bottom: 14px;
+        }
+        .holiday-form-row label {
+            font-size: 11px;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: bold;
+        }
+        .holiday-form-row input {
+            font-size: 14px;
+            padding: 8px 10px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .holiday-list {
+            text-align: left;
+            margin-bottom: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+        }
+        .holiday-list-empty {
+            color: #999;
+            font-size: 12px;
+            padding: 14px 0;
+            text-align: center;
+        }
+        .holiday-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .holiday-list-item .hli-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .holiday-list-item .hli-date {
+            color: #999;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .holiday-list-item .hli-name {
+            font-weight: bold;
+            color: #000;
+            font-size: 12px;
+            word-break: break-word;
+        }
+        .holiday-list-item .hli-delete {
+            background-color: #d32f2f;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            width: 22px;
+            height: 22px;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 14px;
+            padding: 0;
+        }
+        .holiday-list-item .hli-delete:hover {
+            background-color: #b71c1c;
+        }
+
         @media screen and (max-width: 1020px) {
             .calendar-wrapper {
                 width: 100%;
@@ -695,7 +791,7 @@
 
     <!-- Container tambahan untuk menu lain, sengaja di luar #calendarWrapper supaya tidak ikut ter-export ke PDF -->
     <div class="extra-menu-container" id="extraMenuContainer">
-        <div class="extra-menu-item">Menu 2</div>
+        <div class="extra-menu-item" onclick="openHolidayForm()">Libur Nasional</div>
         <div class="extra-menu-item">Menu 3</div>
     </div>
 
@@ -714,6 +810,26 @@
     <!-- Modal Detail Hari Ini -->
     <div class="date-picker-modal" id="todayDetailModal">
         <div class="day-detail-box" id="todayDetailBox"></div>
+    </div>
+
+    <!-- Modal Form Libur Nasional Manual -->
+    <div class="date-picker-modal" id="holidayFormModal">
+        <div class="holiday-form-box">
+            <h3>Libur Nasional (Manual)</h3>
+            <div class="holiday-list" id="holidayListContainer"></div>
+            <div class="holiday-form-row">
+                <label for="holidayDateInput">Tanggal</label>
+                <input type="date" id="holidayDateInput">
+            </div>
+            <div class="holiday-form-row">
+                <label for="holidayNameInput">Nama Hari Libur</label>
+                <input type="text" id="holidayNameInput" placeholder="cth: CUTI BERSAMA IDUL FITRI">
+            </div>
+            <div class="btn-group">
+                <button class="btn-go" onclick="addManualHoliday()">Tambah</button>
+                <button class="btn-cancel" onclick="closeHolidayForm()">Tutup</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -962,11 +1078,112 @@
             let allHolidays = [];
             getFixedHolidays(month).forEach(h => { allHolidays.push({ d: h.d, m: month, name: h.name }); });
             getDynamicHolidays(year).forEach(h => { if (h.m === month) allHolidays.push(h); });
+            getManualHolidays().forEach(h => {
+                if (h.year === year && h.month === month) {
+                    allHolidays.push({ d: h.day, m: h.month, name: h.name });
+                }
+            });
             return allHolidays;
         }
 
         function isHoliday(year, month, day) {
             return getAllHolidays(year, month).some(h => h.d === day && h.m === month);
+        }
+
+        // --- LIBUR NASIONAL MANUAL (FORM INPUT) ---
+        const MANUAL_HOLIDAY_KEY = 'manualHolidaysKalenderJawa';
+
+        function getManualHolidays() {
+            try {
+                const raw = localStorage.getItem(MANUAL_HOLIDAY_KEY);
+                const arr = raw ? JSON.parse(raw) : [];
+                return Array.isArray(arr) ? arr : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveManualHolidays(arr) {
+            try {
+                localStorage.setItem(MANUAL_HOLIDAY_KEY, JSON.stringify(arr));
+            } catch (e) {
+                console.error('Gagal menyimpan libur manual:', e);
+            }
+        }
+
+        function openHolidayForm() {
+            renderHolidayList();
+            document.getElementById('holidayDateInput').value = '';
+            document.getElementById('holidayNameInput').value = '';
+            document.getElementById('holidayFormModal').classList.add('active');
+        }
+
+        function closeHolidayForm() {
+            document.getElementById('holidayFormModal').classList.remove('active');
+        }
+
+        function renderHolidayList() {
+            const list = getManualHolidays().slice().sort((a, b) => {
+                if (a.year !== b.year) return a.year - b.year;
+                if (a.month !== b.month) return a.month - b.month;
+                return a.day - b.day;
+            });
+            const container = document.getElementById('holidayListContainer');
+            if (!list.length) {
+                container.innerHTML = `<div class="holiday-list-empty">Belum ada libur yang ditambahkan</div>`;
+                return;
+            }
+            container.innerHTML = list.map(h => `
+                <div class="holiday-list-item">
+                    <div class="hli-info">
+                        <div class="hli-date">${h.day} ${namaBulan[h.month]} ${h.year}</div>
+                        <div class="hli-name">${h.name}</div>
+                    </div>
+                    <button class="hli-delete" onclick="deleteManualHoliday('${h.id}')" title="Hapus">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function addManualHoliday() {
+            const dateVal = document.getElementById('holidayDateInput').value;
+            const nameVal = document.getElementById('holidayNameInput').value.trim();
+
+            if (!dateVal) {
+                alert('Pilih tanggal libur terlebih dahulu!');
+                return;
+            }
+            if (!nameVal) {
+                alert('Isi nama hari libur terlebih dahulu!');
+                return;
+            }
+
+            const parts = dateVal.split('-');
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const day = parseInt(parts[2]);
+
+            const list = getManualHolidays();
+            list.push({
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+                year: year,
+                month: month,
+                day: day,
+                name: nameVal.toUpperCase()
+            });
+            saveManualHolidays(list);
+
+            document.getElementById('holidayDateInput').value = '';
+            document.getElementById('holidayNameInput').value = '';
+
+            renderHolidayList();
+            generateCalendar();
+        }
+
+        function deleteManualHoliday(id) {
+            const list = getManualHolidays().filter(h => h.id !== id);
+            saveManualHolidays(list);
+            renderHolidayList();
+            generateCalendar();
         }
 
         const pranataMangsa = [{
@@ -1239,6 +1456,10 @@
             const todayModal = document.getElementById('todayDetailModal');
             if (e.target === todayModal) {
                 closeTodayDetail();
+            }
+            const holidayModal = document.getElementById('holidayFormModal');
+            if (e.target === holidayModal) {
+                closeHolidayForm();
             }
         });
 
