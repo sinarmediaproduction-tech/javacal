@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Jawa - Neptu, Hijriyah & Hari Baik</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#d32f2f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Kalender Jawa">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
@@ -876,6 +887,7 @@
     <div class="extra-menu-container" id="extraMenuContainer">
         <div class="extra-menu-item" onclick="openHolidayForm()">Libur Nasional</div>
         <div class="extra-menu-item" onclick="showPrimbonToday()">Primbon Hari Ini</div>
+        <div class="extra-menu-item" id="installMenuItem" style="display:none;" onclick="installApp()">Pasang Aplikasi</div>
     </div>
 
     <!-- Modal Pilih Tanggal -->
@@ -2279,6 +2291,40 @@ function getWinduSancaya(year) {
                 generateCalendar();
             }, 150);
         });
+
+        // --- PWA: service worker & tombol pasang aplikasi ---
+        let deferredInstallPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            const item = document.getElementById('installMenuItem');
+            if (item) item.style.display = '';
+        });
+
+        window.addEventListener('appinstalled', function() {
+            deferredInstallPrompt = null;
+            const item = document.getElementById('installMenuItem');
+            if (item) item.style.display = 'none';
+        });
+
+        function installApp() {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            deferredInstallPrompt.userChoice.finally(function() {
+                deferredInstallPrompt = null;
+                const item = document.getElementById('installMenuItem');
+                if (item) item.style.display = 'none';
+            });
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').catch(function(err) {
+                    console.warn('Service worker gagal didaftarkan:', err);
+                });
+            });
+        }
 
         // Jalankan
         initCalendar();
