@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Jawa - Neptu, Hijriyah & Hari Baik</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
-    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
@@ -941,6 +939,12 @@
             'Pon': 7
         };
 
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
         function getNeptu(dayIndex, pasaranName) {
             return nilaiHari[dayIndex] + nilaiPasaran[pasaranName];
         }
@@ -1173,22 +1177,24 @@
             return { year: year, month: month, day: day };
         }
 
-        function getTahunJawa(year, month) {
-
-            const hijri = masehiToHijriyah(year, month, 15);
-
-            let jawaYear = hijri.year + 512;
-
-            const siklus =
-                ((jawaYear - 1555) % 8 + 8) % 8;
-
-            return {
-                tahun: jawaYear,
-                nama: namaTahunJawa[siklus]
-            };
+        function getTahunJawa(year, month, day = 15) {
+            const hijri = masehiToHijriyah(year, month, day);
+            const jawaYear = hijri.year + 512;
+            const siklus = ((jawaYear - 1555) % 8 + 8) % 8;
+            return { tahun: jawaYear, nama: namaTahunJawa[siklus] };
         }
 
-        function getWinduSancaya(year) {
+        // Label Tahun Jawa untuk header: kalau 1 Suro jatuh di tengah bulan Masehi,
+        // tampilkan dua tahun (mis. "1959 DAL / 1960 BE")
+        function getTahunJawaLabel(year, month) {
+            const last = new Date(year, month + 1, 0).getDate();
+            const a = getTahunJawa(year, month, 1);
+            const b = getTahunJawa(year, month, last);
+            const fmt = t => t.tahun + ' ' + t.nama.toUpperCase();
+            return a.tahun === b.tahun ? fmt(a) : fmt(a) + ' / ' + fmt(b);
+        }
+
+function getWinduSancaya(year) {
             const winduNames = ["Adi", "Kuntara", "Sangara", "Sancaya"];
             const anchorYear = 1869;
             let diff = year - anchorYear;
@@ -1202,58 +1208,27 @@
             return { nama: winduName, ke: winduKe, tahunMulai: startYear, tahunAkhir: endYear };
         }
 
-        function getBulanSaka(year, month) {
-            let hijri = masehiToHijriyah(year, month, 15);
-            let jawaYear = getTahunJawa(year, month).tahun;
-            let sakaMonth = hijri.month;
-            return { year: jawaYear, month: sakaMonth, name: namaBulanSaka[sakaMonth - 1] || "-" };
-        }
-
-        function getBulanSakaPrev(year, month) {
-            let hijri = masehiToHijriyah(year, month, 15);
-            let prevMonth = hijri.month - 1;
-            let prevYear = getTahunJawa(year, month).tahun;
-            if (prevMonth < 1) { prevMonth = 12;
-                prevYear -= 1; }
-            return { name: namaBulanSaka[prevMonth - 1], month: prevMonth, year: prevYear };
-        }
-
-        function getBulanSakaNext(year, month) {
-            let hijri = masehiToHijriyah(year, month, 15);
-            let nextMonth = hijri.month + 1;
-            let nextYear = getTahunJawa(year, month).tahun;
-            if (nextMonth > 12) { nextMonth = 1;
-                nextYear += 1; }
-            return { name: namaBulanSaka[nextMonth - 1], month: nextMonth, year: nextYear };
+        // Bulan Jawa (Suro, Sapar, ...) mengikuti bulan Hijriyah pada hari pertama
+        // dan hari terakhir bulan Masehi tsb.
+        function getBulanSakaLabel(year, month) {
+            const last = new Date(year, month + 1, 0).getDate();
+            const h1 = masehiToHijriyah(year, month, 1);
+            const h2 = masehiToHijriyah(year, month, last);
+            const a = namaBulanSaka[h1.month - 1] || "-";
+            const b = namaBulanSaka[h2.month - 1] || "-";
+            return a === b ? a : a + ' - ' + b;
         }
 
         function getBulanHijriyah(year, month) {
-
             const h1 = masehiToHijriyah(year, month, 1);
-            const h2 = masehiToHijriyah(
-                year,
-                month,
-                new Date(year, month + 1, 0).getDate()
-            );
+            const h2 = masehiToHijriyah(year, month, new Date(year, month + 1, 0).getDate());
 
             return {
-                name:
-                    h1.month === h2.month
+                name: h1.month === h2.month
                     ? namaBulanHijriyah[h1.month - 1]
-                    : namaBulanHijriyah[h1.month - 1] +
-                      " / " +
-                      namaBulanHijriyah[h2.month - 1],
-                year: h1.year
+                    : namaBulanHijriyah[h1.month - 1] + " - " + namaBulanHijriyah[h2.month - 1],
+                year: h1.year === h2.year ? String(h1.year) : h1.year + " / " + h2.year
             };
-        }
-
-        function getBulanHijriyahNext(year, month) {
-            let hijri = masehiToHijriyah(year, month, 15);
-            let nextMonth = hijri.month + 1;
-            let nextYear = hijri.year;
-            if (nextMonth > 12) { nextMonth = 1;
-                nextYear += 1; }
-            return { year: nextYear, month: nextMonth, name: namaBulanHijriyah[nextMonth - 1] || "-" };
         }
 
         function getEaster(year) {
@@ -1361,7 +1336,7 @@
                 <div class="holiday-list-item">
                     <div class="hli-info">
                         <div class="hli-date">${h.day} ${namaBulan[h.month]} ${h.year}</div>
-                        <div class="hli-name">${h.name}</div>
+                        <div class="hli-name">${escapeHtml(h.name)}</div>
                     </div>
                     <button class="hli-delete" onclick="deleteManualHoliday('${h.id}')" title="Hapus">&times;</button>
                 </div>
@@ -1395,6 +1370,7 @@
                 name: nameVal.toUpperCase()
             });
             saveManualHolidays(list);
+            footerHeightCache = {};
 
             document.getElementById('holidayDateInput').value = '';
             document.getElementById('holidayNameInput').value = '';
@@ -1406,6 +1382,7 @@
         function deleteManualHoliday(id) {
             const list = getManualHolidays().filter(h => h.id !== id);
             saveManualHolidays(list);
+            footerHeightCache = {};
             renderHolidayList();
             generateCalendar();
         }
@@ -1589,9 +1566,10 @@
             const neptu = getNeptu(dayOfWeek, p);
             const pancasuda = getPancasuda(neptu);
             const wuku = getWuku(year, month, d);
-            const tahunJawa = getTahunJawa(year, month);
+            const tahunJawa = getTahunJawa(year, month, d);
             const windu = getWinduSancaya(year);
-            const saka = getBulanSaka(year, month);
+            const sakaHijri = masehiToHijriyah(year, month, d);
+            const saka = { name: namaBulanSaka[sakaHijri.month - 1] || '-' };
             const hijri = masehiToHijriyah(year, month, d);
             const hijriBulan = namaBulanHijriyah[hijri.month - 1] || '-';
             const holidaysToday = getAllHolidays(year, month).filter(h => h.d === d && h.m === month);
@@ -1601,7 +1579,7 @@
             const isToday = now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
 
             const holidayHtml = holidaysToday.length
-                ? `<div class="tdd-holiday">${holidaysToday.map(h => h.name).join(', ')}</div>`
+                ? `<div class="tdd-holiday">${holidaysToday.map(h => escapeHtml(h.name)).join(', ')}</div>`
                 : '';
 
             const html = `
@@ -1699,7 +1677,7 @@
 
             const targetDate = new Date(year, month, day);
 
-            const diffDays = Math.floor(
+            const diffDays = Math.round(
                 (targetDate - baseDate) / 86400000
             );
 
@@ -1718,13 +1696,13 @@
             if (weekIndex === 0) {
                 firstDayOfWeek = 1;
             } else {
-                const firstSunday = (startDay === 0) ? 1 : (8 - startDay);
-                firstDayOfWeek = firstSunday + (weekIndex - 1) * 7;
+                // hari Minggu awal baris ke-weekIndex
+                firstDayOfWeek = weekIndex * 7 - startDay + 1;
             }
 
-            let clampedFirstDay = firstDayOfWeek;
-            if (clampedFirstDay > daysInMonth) clampedFirstDay = daysInMonth;
-            const wukuMain = getWuku(year, month, clampedFirstDay);
+            // Date otomatis meluber ke bulan berikutnya; kolom terakhir yang berisi
+            // tanggal bulan depan ikut menampilkan wuku yang benar
+            const wukuMain = getWuku(year, month, firstDayOfWeek);
 
             // PATCH: kolom minggu terakhir (index 4) bisa "menampung" 1-2 hari
             // titipan dari baris ke-6 pada bulan yang butuh 6 baris kalender
@@ -1770,45 +1748,40 @@
             let ringkas = "";
             let cuaca = "";
             let dampak = "";
+            const monthStart = new Date(year, m, 1);
+            const monthEnd = new Date(year, m + 1, 0);
+
             pranataMangsa.forEach(pm => {
-                let startYear = (pm.nama === "Kapitu" && m === 11) ? year : year;
-                let endYear = (pm.nama === "Kapitu" && m === 0) ? year + 1 : year;
-                let startDate = new Date(startYear, pm.sm, pm.sd);
-                let endDate = new Date(endYear, pm.em, pm.ed);
-                let monthStart = startDate.getMonth();
-                let monthEnd = endDate.getMonth();
-                let yearStart = startDate.getFullYear();
-                let yearEnd = endDate.getFullYear();
-
-                let isInRange = false;
-                if (yearStart === yearEnd) {
-                    if (m >= monthStart && m <= monthEnd) isInRange = true;
-                } else {
-                    if (m >= monthStart || m <= monthEnd) isInRange = true;
+                // cari tahun mulai (year-1 atau year) yang rentangnya beririsan dengan bulan ini
+                let startYear = null, endYear = null, startDate, endDate;
+                for (const sy of [year - 1, year]) {
+                    const ey = pm.em < pm.sm ? sy + 1 : sy;
+                    const s = new Date(sy, pm.sm, pm.sd);
+                    const e = new Date(ey, pm.em, pm.ed);
+                    if (s <= monthEnd && e >= monthStart) {
+                        startYear = sy; endYear = ey; startDate = s; endDate = e;
+                        break;
+                    }
                 }
-                if (pm.nama === "Kapitu" && m === 11) isInRange = true;
-                if (pm.nama === "Kapitu" && m === 0) isInRange = true;
+                if (startYear === null) return;
 
-                if (isInRange) {
-                    let diffTime = Math.abs(endDate - startDate);
-                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                    let startStr = `${pm.sd} ${namaBulan[pm.sm]} ${startYear}`;
-                    let endStr = `${pm.ed} ${namaBulan[pm.em]} ${endYear}`;
+                const diffDays = Math.round((endDate - startDate) / 86400000) + 1;
+                const startStr = `${pm.sd} ${namaBulan[pm.sm]} ${startYear}`;
+                const endStr = `${pm.ed} ${namaBulan[pm.em]} ${endYear}`;
 
-                    ringkas += `<div class="mangsa-item">
+                ringkas += `<div class="mangsa-item">
                         <strong>${pm.nama} (${pm.id})</strong> <span class="rentang">${diffDays} hr • ${startStr} - ${endStr}</span>
                         <span class="filosofi">“${pm.candra}”</span>
                     </div>`;
 
-                    cuaca +=
-                        `<div class="mangsa-item"><span class="label">Cuaca:</span> ${pm.cuaca} | <span class="label">Angin:</span> ${pm.angin}</div>`;
+                cuaca +=
+                    `<div class="mangsa-item"><span class="label">Cuaca:</span> ${pm.cuaca} | <span class="label">Angin:</span> ${pm.angin}</div>`;
 
-                    let kejadianText = (pm.kejadian && pm.kejadian !== "-") ?
-                        ` <span class="label">Kejadian:</span> <span class="kejadian">${pm.kejadian}</span>` :
-                        "";
-                    dampak +=
-                        `<div class="mangsa-item"><span class="label">Dampak:</span> ${pm.dampak}${kejadianText}</div>`;
-                }
+                const kejadianText = (pm.kejadian && pm.kejadian !== "-") ?
+                    ` <span class="label">Kejadian:</span> <span class="kejadian">${pm.kejadian}</span>` :
+                    "";
+                dampak +=
+                    `<div class="mangsa-item"><span class="label">Dampak:</span> ${pm.dampak}${kejadianText}</div>`;
             });
             if (!ringkas) ringkas = "<span style='color:#999;'>Tidak ada</span>";
             if (!cuaca) cuaca = "<span style='color:#999;'>Tidak ada</span>";
@@ -1821,7 +1794,7 @@
             if (allHolidays.length === 0) return "";
             let html = "";
             allHolidays.forEach(h => {
-                html += `<p class="holiday-red">${h.d} ${namaBulan[m]} : ${h.name}</p>`;
+                html += `<p class="holiday-red">${h.d} ${namaBulan[m]} : ${escapeHtml(h.name)}</p>`;
             });
             return html;
         }
@@ -1993,7 +1966,9 @@
         }
 
         function applyFixedFooterHeight(year) {
-            if (!footerHeightCache[year]) {
+            if (footerHeightCache[year] == null) {
+                const oldStyle = document.getElementById('fixedFooterStyle');
+                if (oldStyle) oldStyle.remove();
                 footerHeightCache[year] = computeMaxFooterHeight(year);
             }
             const maxH = footerHeightCache[year];
@@ -2015,18 +1990,14 @@
             const dataM1 = getMonthData(y1, m1);
             const dataM2 = getMonthData(y2, m2);
 
-            let tahunJawa1 = getTahunJawa(y1, m1);
-            let tahunJawa2 = getTahunJawa(y2, m2);
+            let tahunJawa1 = getTahunJawaLabel(y1, m1);
+            let tahunJawa2 = getTahunJawaLabel(y2, m2);
             let windu1 = getWinduSancaya(y1);
             let windu2 = getWinduSancaya(y2);
-            let saka1 = getBulanSaka(y1, m1);
-            let saka2 = getBulanSaka(y2, m2);
-            let saka1Prev = getBulanSakaPrev(y1, m1);
-            let saka2Next = getBulanSakaNext(y2, m2);
+            let saka1 = getBulanSakaLabel(y1, m1);
+            let saka2 = getBulanSakaLabel(y2, m2);
             let hijri1 = getBulanHijriyah(y1, m1);
-            let hijri1Next = getBulanHijriyahNext(y1, m1);
             let hijri2 = getBulanHijriyah(y2, m2);
-            let hijri2Next = getBulanHijriyahNext(y2, m2);
 
             let wukuM1 = [];
             for (let w = 0; w < 5; w++) {
@@ -2048,9 +2019,9 @@
                                 ${namaBulan[m1]}
                             </div>
                             <div class="month-info-left">
-                                <div class="line1">${saka1Prev.name.toUpperCase()} - ${saka1.name.toUpperCase()}</div>
-                                <div class="line2">${hijri1.name.toUpperCase()} - ${hijri1Next.name.toUpperCase()} ${hijri1.year} HIJRIYAH</div>
-                                <div class="line3"><span class="tahun-jawa">${tahunJawa1.tahun} ${tahunJawa1.nama.toUpperCase()}</span></div>
+                                <div class="line1">${saka1.toUpperCase()}</div>
+                                <div class="line2">${hijri1.name.toUpperCase()} ${hijri1.year} HIJRIYAH</div>
+                                <div class="line3"><span class="tahun-jawa">${tahunJawa1}</span></div>
                             </div>
                         </div>
                         <div class="header-center">
@@ -2066,9 +2037,9 @@
                                 <span class="nav-arrow">&#9654;</span>
                             </div>
                             <div class="month-info-right">
-                                <div class="line1">${saka2.name.toUpperCase()} - ${saka2Next.name.toUpperCase()}</div>
-                                <div class="line2">${hijri2.name.toUpperCase()} - ${hijri2Next.name.toUpperCase()} ${hijri2.year} HIJRIYAH</div>
-                                <div class="line3"><span class="tahun-jawa">${tahunJawa2.tahun} ${tahunJawa2.nama.toUpperCase()}</span></div>
+                                <div class="line1">${saka2.toUpperCase()}</div>
+                                <div class="line2">${hijri2.name.toUpperCase()} ${hijri2.year} HIJRIYAH</div>
+                                <div class="line3"><span class="tahun-jawa">${tahunJawa2}</span></div>
                             </div>
                         </div>
                     </div>
@@ -2144,7 +2115,6 @@
             const element = document.getElementById('calendarWrapper');
 
             const m2 = (currentStartMonth + 1) % 12;
-            const y2 = currentStartMonth === 11 ? currentYear + 1 : currentYear;
             const filename = `Kalender-Jawa-${namaBulan[currentStartMonth]}-${namaBulan[m2]}-${currentYear}.pdf`;
 
             const pageW_mm = 280;
@@ -2161,6 +2131,16 @@
             element.style.width = calWidth + 'px';
             element.style.overflow = 'visible';
             element.style.boxShadow = 'none';
+
+            // ukur ulang tinggi sel & footer untuk lebar 1000px (bukan lebar layar HP)
+            relayoutForCurrentWidth();
+
+            const restoreLayout = () => {
+                element.style.width = prevWidth;
+                element.style.overflow = prevOverflow;
+                element.style.boxShadow = prevShadow;
+                relayoutForCurrentWidth();
+            };
 
             requestAnimationFrame(() => {
                 const calHeight = element.getBoundingClientRect().height || element.offsetHeight || 700;
@@ -2188,6 +2168,13 @@
                         }
                         clonedDoc.body.style.overflow = 'visible';
                         clonedDoc.body.style.height = 'auto';
+                        // clone dirender dengan windowWidth 1000, jadi aturan @media (max-width:600px)
+                        // tidak ikut aktif; samakan dengan tampilan live agar footer tidak terpotong
+                        if (window.innerWidth <= 600) {
+                            const st = clonedDoc.createElement('style');
+                            st.textContent = '.footer-col{font-size:7px;} .mangsa-item .filosofi{font-size:6px;}';
+                            clonedDoc.head.appendChild(st);
+                        }
                         const link = clonedDoc.createElement('link');
                         link.rel = 'stylesheet';
                         link.href =
@@ -2195,9 +2182,7 @@
                         clonedDoc.head.appendChild(link);
                     }
                 }).then(function(canvas) {
-                    element.style.width = prevWidth;
-                    element.style.overflow = prevOverflow;
-                    element.style.boxShadow = prevShadow;
+                    restoreLayout();
 
                     const canvasW = canvas.width;
                     const canvasH = canvas.height;
@@ -2221,9 +2206,7 @@
                     pdf.save(filename);
 
                 }).catch(function(err) {
-                    element.style.width = prevWidth;
-                    element.style.overflow = prevOverflow;
-                    element.style.boxShadow = prevShadow;
+                    restoreLayout();
                     console.error('PDF Error:', err);
                     alert('Gagal membuat PDF.\nCoba gunakan Ctrl+P → Save as PDF sebagai alternatif.');
                 });
@@ -2277,6 +2260,25 @@
             style.textContent = `.date-cell { height: ${cellH}px !important; }`;
             document.head.appendChild(style);
         }
+
+        function relayoutForCurrentWidth() {
+            footerHeightCache = {};
+            applyFixedFooterHeight(currentYear);
+            enforceRatio();
+        }
+
+        // Hitung ulang layout saat lebar layar berubah (rotasi HP / resize jendela)
+        let lastLayoutWidth = window.innerWidth;
+        let resizeTimer = null;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth === lastLayoutWidth) return; // abaikan perubahan tinggi (address bar HP)
+                lastLayoutWidth = window.innerWidth;
+                footerHeightCache = {};
+                generateCalendar();
+            }, 150);
+        });
 
         // Jalankan
         initCalendar();
