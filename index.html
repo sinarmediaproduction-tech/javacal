@@ -2123,7 +2123,51 @@ function getWinduSancaya(year) {
         }
 
         // --- FUNGSI EXPORT PDF ---
-        function exportPDF() {
+        // --- EXPORT PDF (resolusi tinggi untuk master cetak) ---
+        const PDF_TARGET_DPI = 600;   // target kerapatan piksel pada kertas
+        const PDF_MIN_SCALE = 3;      // batas bawah kalau perangkat tidak kuat
+        let isExportingPDF = false;
+
+        // Uji apakah browser sanggup membuat canvas sebesar ini (iOS Safari diam-diam gagal > ~16 MP)
+        function canvasSizeSupported(w, h) {
+            try {
+                if (w > 32000 || h > 32000) return false;
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                const ctx = c.getContext('2d');
+                if (!ctx) return false;
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(w - 1, h - 1, 1, 1);
+                const ok = ctx.getImageData(w - 1, h - 1, 1, 1).data[3] === 255;
+                c.width = 0; c.height = 0;
+                return ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function showExportToast(text) {
+            let t = document.getElementById('exportToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'exportToast';
+                t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
+                    'background:#222;color:#fff;padding:10px 18px;border-radius:6px;font:600 13px Roboto,sans-serif;' +
+                    'z-index:99999;box-shadow:0 2px 10px rgba(0,0,0,.35);max-width:90%;text-align:center;';
+                document.body.appendChild(t);
+            }
+            t.textContent = text;
+        }
+
+        function hideExportToast() {
+            const t = document.getElementById('exportToast');
+            if (t) t.remove();
+        }
+
+        async function exportPDF() {
+            if (isExportingPDF) return;
+            isExportingPDF = true;
+
             const element = document.getElementById('calendarWrapper');
 
             const m2 = (currentStartMonth + 1) % 12;
@@ -2140,12 +2184,6 @@ function getWinduSancaya(year) {
             const prevWidth = element.style.width;
             const prevOverflow = element.style.overflow;
             const prevShadow = element.style.boxShadow;
-            element.style.width = calWidth + 'px';
-            element.style.overflow = 'visible';
-            element.style.boxShadow = 'none';
-
-            // ukur ulang tinggi sel & footer untuk lebar 1000px (bukan lebar layar HP)
-            relayoutForCurrentWidth();
 
             const restoreLayout = () => {
                 element.style.width = prevWidth;
@@ -2154,75 +2192,125 @@ function getWinduSancaya(year) {
                 relayoutForCurrentWidth();
             };
 
-            requestAnimationFrame(() => {
-                const calHeight = element.getBoundingClientRect().height || element.offsetHeight || 700;
+            showExportToast('Menyiapkan PDF resolusi tinggi…');
 
-                html2canvas(element, {
-                    scale: 4,
-                    useCORS: true,
-                    allowTaint: true,
-                    letterRendering: true,
-                    logging: false,
-                    backgroundColor: '#ffffff',
-                    width: calWidth,
-                    height: Math.ceil(calHeight),
-                    scrollX: 0,
-                    scrollY: -window.scrollY,
-                    windowWidth: calWidth,
-                    onclone: function(clonedDoc) {
-                        const el = clonedDoc.getElementById('calendarWrapper');
-                        if (el) {
-                            el.style.boxShadow = 'none';
-                            el.style.border = 'none';
-                            el.style.width = calWidth + 'px';
-                            el.style.overflow = 'visible';
-                            el.style.height = 'auto';
+            try {
+                if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+                element.style.width = calWidth + 'px';
+                element.style.overflow = 'visible';
+                element.style.boxShadow = 'none';
+
+                // ukur ulang tinggi sel & footer untuk lebar 1000px (bukan lebar layar HP)
+                relayoutForCurrentWidth();
+                await new Promise(r => requestAnimationFrame(() => r()));
+
+                const calHeight = Math.ceil(element.getBoundingClientRect().height || element.offsetHeight || 700);
+
+                // ukuran gambar di kertas (mm per piksel CSS) -> skala untuk mencapai PDF_TARGET_DPI
+                const fitCss = Math.min(availW_mm / calWidth, availH_mm / calHeight);
+                const idealScale = fitCss / 25.4 * PDF_TARGET_DPI;
+
+                // turunkan skala bertahap bila perangkat tidak sanggup
+                let scale = idealScale;
+                while (scale > PDF_MIN_SCALE &&
+                    !canvasSizeSupported(Math.ceil(calWidth * scale), Math.ceil(calHeight * scale))) {
+                    scale *= 0.85;
+                }
+                scale = Math.max(scale, PDF_MIN_SCALE);
+
+                let canvas = null;
+                let imgData = '';
+                while (true) {
+                    showExportToast(`Merender kalender (${Math.round(scale / fitCss * 25.4)} dpi)…`);
+                    await new Promise(r => setTimeout(r, 30)); // beri kesempatan toast tampil
+
+                    canvas = await html2canvas(element, {
+                        scale: scale,
+                        useCORS: true,
+                        allowTaint: true,
+                        letterRendering: true,
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        width: calWidth,
+                        height: calHeight,
+                        scrollX: 0,
+                        scrollY: -window.scrollY,
+                        windowWidth: calWidth,
+                        onclone: function(clonedDoc) {
+                            const el = clonedDoc.getElementById('calendarWrapper');
+                            if (el) {
+                                el.style.boxShadow = 'none';
+                                el.style.border = 'none';
+                                el.style.width = calWidth + 'px';
+                                el.style.overflow = 'visible';
+                                el.style.height = 'auto';
+                            }
+                            clonedDoc.body.style.overflow = 'visible';
+                            clonedDoc.body.style.height = 'auto';
+                            // clone dirender dengan windowWidth 1000, jadi aturan @media (max-width:600px)
+                            // tidak ikut aktif; samakan dengan tampilan live agar footer tidak terpotong
+                            if (window.innerWidth <= 600) {
+                                const st = clonedDoc.createElement('style');
+                                st.textContent = '.footer-col{font-size:7px;} .mangsa-item .filosofi{font-size:6px;}';
+                                clonedDoc.head.appendChild(st);
+                            }
+                            const link = clonedDoc.createElement('link');
+                            link.rel = 'stylesheet';
+                            link.href =
+                                'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;700&display=swap';
+                            clonedDoc.head.appendChild(link);
                         }
-                        clonedDoc.body.style.overflow = 'visible';
-                        clonedDoc.body.style.height = 'auto';
-                        // clone dirender dengan windowWidth 1000, jadi aturan @media (max-width:600px)
-                        // tidak ikut aktif; samakan dengan tampilan live agar footer tidak terpotong
-                        if (window.innerWidth <= 600) {
-                            const st = clonedDoc.createElement('style');
-                            st.textContent = '.footer-col{font-size:7px;} .mangsa-item .filosofi{font-size:6px;}';
-                            clonedDoc.head.appendChild(st);
-                        }
-                        const link = clonedDoc.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href =
-                            'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;700&display=swap';
-                        clonedDoc.head.appendChild(link);
-                    }
-                }).then(function(canvas) {
-                    restoreLayout();
-
-                    const canvasW = canvas.width;
-                    const canvasH = canvas.height;
-
-                    const fitScale = Math.min(availW_mm / canvasW, availH_mm / canvasH);
-                    const imgW_mm = canvasW * fitScale;
-                    const imgH_mm = canvasH * fitScale;
-                    const offsetX = (pageW_mm - imgW_mm) / 2;
-                    const offsetY = (pageH_mm - imgH_mm) / 2;
-
-                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-
-                    const pdf = new window.jspdf.jsPDF({
-                        unit: 'mm',
-                        format: [pageW_mm, pageH_mm],
-                        orientation: 'landscape',
-                        compress: true
                     });
 
-                    pdf.addImage(imgData, 'JPEG', offsetX, offsetY, imgW_mm, imgH_mm);
-                    pdf.save(filename);
+                    // kualitas maksimum (1.0) agar tidak ada artefak kompresi di teks kecil
+                    imgData = canvas.toDataURL('image/jpeg', 1.0);
 
-                }).catch(function(err) {
-                    restoreLayout();
-                    console.error('PDF Error:', err);
-                    alert('Gagal membuat PDF.\nCoba gunakan Ctrl+P → Save as PDF sebagai alternatif.');
+                    // canvas terlalu besar biasanya menghasilkan "data:," (kosong) -> ulangi dengan skala lebih kecil
+                    if (imgData.length > 1000) break;
+                    if (scale <= PDF_MIN_SCALE) throw new Error('Canvas kosong pada skala minimum');
+                    scale = Math.max(PDF_MIN_SCALE, scale * 0.8);
+                }
+
+                restoreLayout();
+                showExportToast('Menyusun file PDF…');
+                await new Promise(r => setTimeout(r, 30));
+
+                const canvasW = canvas.width;
+                const canvasH = canvas.height;
+
+                const fitScale = Math.min(availW_mm / canvasW, availH_mm / canvasH);
+                const imgW_mm = canvasW * fitScale;
+                const imgH_mm = canvasH * fitScale;
+                const offsetX = (pageW_mm - imgW_mm) / 2;
+                const offsetY = (pageH_mm - imgH_mm) / 2;
+                const effectiveDpi = Math.round(canvasW / (imgW_mm / 25.4));
+
+                const pdf = new window.jspdf.jsPDF({
+                    unit: 'mm',
+                    format: [pageW_mm, pageH_mm],
+                    orientation: 'landscape',
+                    compress: true
                 });
-            });
+                pdf.setProperties({
+                    title: filename.replace(/\.pdf$/, ''),
+                    subject: `Kalender Jawa - ${canvasW}x${canvasH} px, ±${effectiveDpi} dpi`
+                });
+
+                pdf.addImage(imgData, 'JPEG', offsetX, offsetY, imgW_mm, imgH_mm, undefined, 'NONE');
+                pdf.save(filename);
+                console.info(`PDF: ${canvasW}x${canvasH} px, ±${effectiveDpi} dpi`);
+
+                // lepaskan memori canvas besar
+                canvas.width = 0; canvas.height = 0;
+            } catch (err) {
+                restoreLayout();
+                console.error('PDF Error:', err);
+                alert('Gagal membuat PDF.\nCoba gunakan Ctrl+P → Save as PDF sebagai alternatif.');
+            } finally {
+                hideExportToast();
+                isExportingPDF = false;
+            }
         }
 
         function nextMonth() {
