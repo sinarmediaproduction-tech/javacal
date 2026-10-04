@@ -164,7 +164,7 @@
             border-top: 1px solid #000;
             border-bottom: 1px solid #000;
             border-left: 1px solid #000;
-            border-right: 1px solid #000;
+            margin-left: -1px; /* sejajar dengan garis kiri .calendar-grid; lebar kolom tetap sama */
         }
         .wuku-cell {
             border-right: 1px solid #fff;
@@ -178,7 +178,7 @@
             border-left: none;
         }
         .wuku-cell:last-child {
-            border-right: none;
+            border-right: 1px solid #000; /* di dalam track, bukan memperkecil lebar baris */
         }
         .wuku-cell.wuku-split {
             font-size: 7px;
@@ -2211,11 +2211,13 @@ function getWinduSancaya(year) {
                 const fitCss = Math.min(availW_mm / calWidth, availH_mm / calHeight);
                 const idealScale = fitCss / 25.4 * PDF_TARGET_DPI;
 
-                // turunkan skala bertahap bila perangkat tidak sanggup
-                let scale = idealScale;
+                // Skala dibulatkan KE ATAS ke bilangan bulat: kolom/baris sudah berukuran piksel CSS bulat,
+                // jadi setiap garis jatuh tepat di piksel bulat PDF (tajam & lurus, tanpa anti-aliasing).
+                // Turun 1 tingkat bila perangkat tidak sanggup.
+                let scale = Math.ceil(idealScale);
                 while (scale > PDF_MIN_SCALE &&
-                    !canvasSizeSupported(Math.ceil(calWidth * scale), Math.ceil(calHeight * scale))) {
-                    scale *= 0.85;
+                    !canvasSizeSupported(calWidth * scale, calHeight * scale)) {
+                    scale -= 1;
                 }
                 scale = Math.max(scale, PDF_MIN_SCALE);
 
@@ -2269,7 +2271,7 @@ function getWinduSancaya(year) {
                     // canvas terlalu besar biasanya menghasilkan "data:," (kosong) -> ulangi dengan skala lebih kecil
                     if (imgData.length > 1000) break;
                     if (scale <= PDF_MIN_SCALE) throw new Error('Canvas kosong pada skala minimum');
-                    scale = Math.max(PDF_MIN_SCALE, scale * 0.8);
+                    scale = Math.max(PDF_MIN_SCALE, scale - 1);
                 }
 
                 restoreLayout();
@@ -2345,6 +2347,29 @@ function getWinduSancaya(year) {
             const W = wrapper.offsetWidth;
             const targetH = Math.round(W * (180 / 280));
 
+            // Lebar kolom dibulatkan ke piksel bulat supaya semua garis vertikal jatuh tepat di
+            // piksel (tidak ada garis tebal-tipis / bergeser). Grid tanggal dan baris wuku memakai
+            // track yang SAMA persis, sehingga pemisah wuku lurus dengan garis tanggal.
+            const grid = wrapper.querySelector('.calendar-grid');
+            let colsCss = '';
+            if (grid) {
+                const contentW = Math.floor(grid.getBoundingClientRect().width) - 1; // -1 = border-left grid
+                const cum = [1, 2, 3, 4, 5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]; // 5x1fr, 1.5fr, 5x1fr
+                let prev = 0;
+                const cols = cum.map(c => {
+                    const edge = Math.round(c / 11.5 * contentW);
+                    const w = edge - prev;
+                    prev = edge;
+                    return w + 'px';
+                });
+                colsCss = `.calendar-grid, .wuku-row { grid-template-columns: ${cols.join(' ')} !important; }`;
+            }
+
+            const style = document.getElementById('dynamicCellStyle') || document.createElement('style');
+            style.id = 'dynamicCellStyle';
+            style.textContent = colsCss;           // terapkan kolom dulu, lalu ukur tinggi
+            document.head.appendChild(style);
+
             const header = wrapper.querySelector('.header');
             const wukuRow = wrapper.querySelector('.wuku-row');
             const footer = wrapper.querySelector('.footer');
@@ -2355,10 +2380,7 @@ function getWinduSancaya(year) {
             const cellTotalH = targetH - headerH - wukuH - footerH - 4;
             const cellH = Math.floor(cellTotalH / 7);
 
-            const style = document.getElementById('dynamicCellStyle') || document.createElement('style');
-            style.id = 'dynamicCellStyle';
-            style.textContent = `.date-cell { height: ${cellH}px !important; }`;
-            document.head.appendChild(style);
+            style.textContent = `${colsCss} .date-cell { height: ${cellH}px !important; }`;
         }
 
         function relayoutForCurrentWidth() {
