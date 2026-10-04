@@ -26,10 +26,20 @@
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             padding: 10px;
+            /* Desain dikunci di 1000px: zoom in/out browser hanya memperbesar/memperkecil,
+               tidak mengubah tata letak. Jika jendela lebih sempit, halaman bisa digeser. */
+            min-width: 1000px;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        #stageBox {
+            width: 1000px;
+            margin: 0 auto;
+        }
+        #stage {
+            width: 1000px;
+            transform-origin: 0 0;
         }
 
         .month-title-btn {
@@ -68,7 +78,6 @@
         .extra-menu-container {
             background-color: #fff;
             width: 1000px;
-            max-width: 100%;
             margin-top: 14px;
             border: none;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -845,42 +854,11 @@
             letter-spacing: 0.5px;
             margin-bottom: 4px;
         }
-
-        @media screen and (max-width: 1020px) {
-            .calendar-wrapper {
-                width: 100%;
-            }
-            .extra-menu-container {
-                width: 100%;
-            }
-            .extra-menu-item {
-                min-width: 90px;
-                font-size: 11px;
-                padding: 12px 6px;
-            }
-            .controls {
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .footer-grid {
-                grid-template-columns: repeat(5, 1fr) !important;
-            }
-        }
-        @media screen and (max-width: 600px) {
-            .footer-grid {
-                grid-template-columns: repeat(5, 1fr) !important;
-            }
-            .footer-col {
-                font-size: 7px;
-            }
-            .mangsa-item .filosofi {
-                font-size: 6px;
-            }
-        }
     </style>
 </head>
 <body>
 
+    <div id="stageBox"><div id="stage">
     <div class="calendar-wrapper" id="calendarWrapper"></div>
 
     <!-- Container tambahan untuk menu lain, sengaja di luar #calendarWrapper supaya tidak ikut ter-export ke PDF -->
@@ -889,6 +867,7 @@
         <div class="extra-menu-item" onclick="showPrimbonToday()">Primbon Hari Ini</div>
         <div class="extra-menu-item" id="installMenuItem" style="display:none;" onclick="installApp()">Pasang Aplikasi</div>
     </div>
+    </div></div>
 
     <!-- Modal Pilih Tanggal -->
     <div class="date-picker-modal" id="datePickerModal">
@@ -2185,10 +2164,20 @@ function getWinduSancaya(year) {
             const prevOverflow = element.style.overflow;
             const prevShadow = element.style.boxShadow;
 
+            const stageEl = document.getElementById('stage');
+            const boxEl = document.getElementById('stageBox');
+            const prevStage = stageEl.style.transform;
+            const prevBoxW = boxEl.style.width, prevBoxH = boxEl.style.height;
+            const prevBodyMin = document.body.style.minWidth;
+
             const restoreLayout = () => {
                 element.style.width = prevWidth;
                 element.style.overflow = prevOverflow;
                 element.style.boxShadow = prevShadow;
+                stageFitDisabled = false;
+                stageEl.style.transform = prevStage;
+                boxEl.style.width = prevBoxW; boxEl.style.height = prevBoxH;
+                document.body.style.minWidth = prevBodyMin;
                 relayoutForCurrentWidth();
             };
 
@@ -2201,11 +2190,17 @@ function getWinduSancaya(year) {
                 element.style.overflow = 'visible';
                 element.style.boxShadow = 'none';
 
+                // lepas skala-muat layar sentuh agar html2canvas mengukur ukuran asli 1000px
+                stageFitDisabled = true;
+                stageEl.style.transform = 'none';
+                boxEl.style.width = '1000px'; boxEl.style.height = '';
+                document.body.style.minWidth = '1000px';
+
                 // ukur ulang tinggi sel & footer untuk lebar 1000px (bukan lebar layar HP)
                 relayoutForCurrentWidth();
                 await new Promise(r => requestAnimationFrame(() => r()));
 
-                const calHeight = Math.ceil(element.getBoundingClientRect().height || element.offsetHeight || 700);
+                const calHeight = Math.ceil(element.offsetHeight || 700);
 
                 // ukuran gambar di kertas (mm per piksel CSS) -> skala untuk mencapai PDF_TARGET_DPI
                 const fitCss = Math.min(availW_mm / calWidth, availH_mm / calHeight);
@@ -2250,13 +2245,8 @@ function getWinduSancaya(year) {
                             }
                             clonedDoc.body.style.overflow = 'visible';
                             clonedDoc.body.style.height = 'auto';
-                            // clone dirender dengan windowWidth 1000, jadi aturan @media (max-width:600px)
-                            // tidak ikut aktif; samakan dengan tampilan live agar footer tidak terpotong
-                            if (window.innerWidth <= 600) {
-                                const st = clonedDoc.createElement('style');
-                                st.textContent = '.footer-col{font-size:7px;} .mangsa-item .filosofi{font-size:6px;}';
-                                clonedDoc.head.appendChild(st);
-                            }
+                            const stg = clonedDoc.getElementById('stage');
+                            if (stg) stg.style.transform = 'none';
                             const link = clonedDoc.createElement('link');
                             link.rel = 'stylesheet';
                             link.href =
@@ -2353,7 +2343,7 @@ function getWinduSancaya(year) {
             const grid = wrapper.querySelector('.calendar-grid');
             let colsCss = '';
             if (grid) {
-                const contentW = Math.floor(grid.getBoundingClientRect().width) - 1; // -1 = border-left grid
+                const contentW = grid.offsetWidth - 1; // -1 = border-left grid
                 const cum = [1, 2, 3, 4, 5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]; // 5x1fr, 1.5fr, 5x1fr
                 let prev = 0;
                 const cols = cum.map(c => {
@@ -2381,6 +2371,34 @@ function getWinduSancaya(year) {
             const cellH = Math.floor(cellTotalH / 7);
 
             style.textContent = `${colsCss} .date-cell { height: ${cellH}px !important; }`;
+            fitStage();
+        }
+
+        // Layar sentuh (HP/tablet): seluruh halaman diskalakan agar muat lebar layar, tampilan
+        // tetap sama persis seperti di desktop (cubit-zoom tidak mengubah tata letak).
+        // Desktop: tidak diskalakan sama sekali; zoom browser hanya membesar/mengecilkan.
+        let stageFitDisabled = false;
+        function fitStage() {
+            if (stageFitDisabled) return;
+            const box = document.getElementById('stageBox');
+            const stage = document.getElementById('stage');
+            if (!box || !stage) return;
+            let sc = 1;
+            if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+                const avail = document.documentElement.clientWidth - 36; // margin 8 + padding 10, kiri & kanan
+                sc = Math.max(0.2, Math.min(1, avail / 1000));
+            }
+            if (sc < 1) {
+                stage.style.transform = `scale(${sc})`;
+                box.style.width = (1000 * sc) + 'px';
+                box.style.height = (stage.offsetHeight * sc) + 'px';
+                document.body.style.minWidth = '0';
+            } else {
+                stage.style.transform = '';
+                box.style.width = '';
+                box.style.height = '';
+                document.body.style.minWidth = '';
+            }
         }
 
         function relayoutForCurrentWidth() {
@@ -2389,18 +2407,14 @@ function getWinduSancaya(year) {
             enforceRatio();
         }
 
-        // Hitung ulang layout saat lebar layar berubah (rotasi HP / resize jendela)
-        let lastLayoutWidth = window.innerWidth;
+        // Rotasi HP / resize jendela / zoom: kalender TIDAK digambar ulang (desain tetap);
+        // hanya skala-muat layar sentuh yang dihitung ulang.
         let resizeTimer = null;
         window.addEventListener('resize', function() {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                if (window.innerWidth === lastLayoutWidth) return; // abaikan perubahan tinggi (address bar HP)
-                lastLayoutWidth = window.innerWidth;
-                footerHeightCache = {};
-                generateCalendar();
-            }, 150);
+            resizeTimer = setTimeout(fitStage, 100);
         });
+        window.addEventListener('orientationchange', function() { setTimeout(fitStage, 250); });
 
         // --- PWA: service worker & tombol pasang aplikasi ---
         let deferredInstallPrompt = null;
