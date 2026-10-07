@@ -901,6 +901,44 @@
             height: 100%;
             background-color: #d32f2f;
         }
+        .cw-badge {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 3px 9px;
+            border-radius: 10px;
+            color: #fff;
+            white-space: nowrap;
+        }
+        .cw-0 { background-color: #e65100; }
+        .cw-1 { background-color: #8d6e63; }
+        .cw-2 { background-color: #607d8b; }
+        .cw-3 { background-color: #1976d2; }
+        .cw-4 { background-color: #0d47a1; }
+        .cuaca-forecast-item {
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding: 8px 0;
+        }
+        .cuaca-forecast-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .cuaca-forecast-top .cf-range {
+            font-weight: bold;
+            font-size: 12.5px;
+            color: #000;
+        }
+        .cuaca-trend {
+            text-align: left;
+            font-size: 12px;
+            color: #333;
+            margin: 2px 0 6px 0;
+            line-height: 1.4;
+        }
         .cuaca-list-item {
             display: flex;
             justify-content: space-between;
@@ -1560,6 +1598,71 @@
             return null;
         }
 
+        // Kecenderungan hujan per mangsa (urutan sama dengan pranataMangsa: Kasa..Sada).
+        // Skala 0-4 disusun dari uraian cuaca tiap mangsa; ubah di sini bila perlu.
+        const MANGSA_HUJAN = [0, 0, 0, 2, 3, 3, 4, 3, 2, 1, 0, 0];
+        const LABEL_HUJAN = {
+            0: 'Kemarau / cerah',
+            1: 'Cenderung kering',
+            2: 'Berawan, hujan sesekali',
+            3: 'Sering hujan',
+            4: 'Hujan lebat'
+        };
+        const PERKIRAAN_HARI = 30;
+
+        function getPerkiraanCuaca(base, jumlahHari) {
+            const grup = [];
+            for (let i = 0; i < jumlahHari; i++) {
+                const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+                const info = getMangsaUntukTanggal(d);
+                if (!info) continue;
+                const last = grup[grup.length - 1];
+                if (last && last.index === info.index) {
+                    last.akhir = d;
+                } else {
+                    grup.push({ index: info.index, pm: info.pm, level: MANGSA_HUJAN[info.index], awal: d, akhir: d });
+                }
+            }
+            return grup;
+        }
+
+        function fmtRentangSingkat(a, b) {
+            const m = d => namaBulan[d.getMonth()].slice(0, 3);
+            if (a.getTime() === b.getTime()) return a.getDate() + ' ' + m(a);
+            if (a.getMonth() === b.getMonth()) return a.getDate() + ' \u2013 ' + b.getDate() + ' ' + m(b);
+            return a.getDate() + ' ' + m(a) + ' \u2013 ' + b.getDate() + ' ' + m(b);
+        }
+
+        function renderPerkiraanCuaca(base) {
+            const grup = getPerkiraanCuaca(base, PERKIRAAN_HARI);
+            if (!grup.length) return '';
+            const awal = grup[0].level;
+            const akhir = grup[grup.length - 1].level;
+            let tren;
+            if (akhir > awal) tren = 'Tren: udara cenderung makin basah menjelang akhir periode.';
+            else if (akhir < awal) tren = 'Tren: udara cenderung makin kering menjelang akhir periode.';
+            else tren = 'Tren: kondisi cenderung stabil sepanjang periode.';
+
+            const items = grup.map(g => {
+                const waspada = (g.pm.kejadian && g.pm.kejadian !== '-') ? `<div class="pa-ket">Waspada: ${g.pm.kejadian}</div>` : '';
+                return `
+                    <div class="cuaca-forecast-item">
+                        <div class="cuaca-forecast-top">
+                            <span class="cf-range">${fmtRentangSingkat(g.awal, g.akhir)}</span>
+                            <span class="cw-badge cw-${g.level}">${LABEL_HUJAN[g.level]}</span>
+                        </div>
+                        <div class="pa-ket">Mangsa ${g.pm.nama} (${g.pm.id}) &middot; ${g.pm.angin}</div>
+                        ${waspada}
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="primbon-section-title">Perkiraan Cuaca ${PERKIRAAN_HARI} Hari</div>
+                <div class="cuaca-trend">${tren}</div>
+                ${items}
+            `;
+        }
+
         function fmtTglCuaca(d) {
             return d.getDate() + ' ' + namaBulan[d.getMonth()] + ' ' + d.getFullYear();
         }
@@ -1598,6 +1701,8 @@
                     <div class="cuaca-bar"><div style="width:${persen}%"></div></div>
                     <div class="pa-ket" style="text-align:right;">${info.sisa === 0 ? 'Hari terakhir mangsa ini' : info.sisa + ' hari lagi ganti mangsa'}</div>
 
+                    ${renderPerkiraanCuaca(base)}
+
                     <div class="primbon-section-title">Cuaca &amp; Angin</div>
                     <ul class="primbon-pantangan-list">
                         <li>${pm.cuaca}</li>
@@ -1629,7 +1734,7 @@
                 ${isi}
                 <div class="primbon-disclaimer">
                     <strong>Catatan</strong>
-                    Pranata Mangsa adalah penanda musim tradisional Jawa untuk kalender pertanian, bukan ramalan cuaca harian. Kondisi sebenarnya dapat berbeda dari tahun ke tahun; untuk prakiraan cuaca terkini, rujuklah BMKG.
+                    Pranata Mangsa adalah penanda musim tradisional Jawa untuk kalender pertanian. Perkiraan di atas hanya kecenderungan musiman berdasarkan mangsa, bukan ramalan cuaca harian. Kondisi sebenarnya dapat berbeda dari tahun ke tahun (misalnya karena El Ni\u00f1o/La Ni\u00f1a); untuk prakiraan cuaca terkini, rujuklah BMKG.
                     <br><br>
                     Konten ini disajikan sebagai warisan budaya dan tradisi Jawa, bukan bagian dari ajaran atau tuntunan agama mana pun.
                 </div>
