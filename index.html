@@ -846,6 +846,126 @@
             line-height: 1.5;
             color: #999;
         }
+        /* Modal Jodoh & Hari Baik Nikah */
+        .jodoh-box {
+            width: 380px;
+        }
+        .jodoh-box .holiday-form-row {
+            margin-bottom: 10px;
+        }
+        .jodoh-person-title {
+            text-align: left;
+            font-family: 'Oswald', sans-serif;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #d32f2f;
+            margin: 12px 0 6px 0;
+        }
+        .jodoh-check {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #555;
+            text-align: left;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        .jodoh-check input {
+            margin: 0;
+        }
+        .jodoh-error {
+            color: #d32f2f;
+            font-size: 12px;
+            text-align: left;
+            margin: 6px 0;
+            min-height: 0;
+        }
+        .jodoh-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .jodoh-actions button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .jodoh-btn-go {
+            background-color: #d32f2f;
+            color: #fff;
+        }
+        .jodoh-btn-go:hover {
+            background-color: #b71c1c;
+        }
+        .jodoh-actions .btn-cancel {
+            background-color: #ccc;
+            color: #000;
+        }
+        .jodoh-actions .btn-cancel:hover {
+            background-color: #aaa;
+        }
+        .jodoh-compat {
+            text-align: left;
+            font-size: 12px;
+            color: #333;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        .jodoh-compat .jc-weton {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .jodoh-compat .jc-weton span:first-child {
+            color: #777;
+        }
+        .jodoh-compat .jc-hasil {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .jodoh-compat .jc-hasil b {
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .jc-good { background-color: #2e7d32; }
+        .jc-mid { background-color: #ef6c00; }
+        .jc-bad { background-color: #d32f2f; }
+        .jodoh-date-item {
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding: 8px 0;
+        }
+        .jodoh-date-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .jodoh-date-top .jd-tgl {
+            font-weight: bold;
+            font-size: 12.5px;
+            color: #000;
+        }
+        .jodoh-date-item .pa-ket {
+            margin-top: 3px;
+        }
+        .jodoh-empty {
+            font-size: 12px;
+            color: #777;
+            margin: 14px 0 4px 0;
+            line-height: 1.5;
+        }
         .primbon-disclaimer strong {
             display: block;
             color: #777;
@@ -865,6 +985,7 @@
     <div class="extra-menu-container" id="extraMenuContainer">
         <div class="extra-menu-item" onclick="openHolidayForm()">Libur Nasional</div>
         <div class="extra-menu-item" onclick="showPrimbonToday()">Primbon Hari Ini</div>
+        <div class="extra-menu-item" onclick="showJodohForm()">Jodoh &amp; Hari Nikah</div>
         <div class="extra-menu-item" id="installMenuItem" style="display:none;" onclick="installApp()">Pasang Aplikasi</div>
     </div>
     </div></div>
@@ -909,6 +1030,11 @@
     <!-- Modal Primbon Hari Ini -->
     <div class="date-picker-modal" id="primbonModal">
         <div class="day-detail-box primbon-box" id="primbonBox"></div>
+    </div>
+
+    <!-- Modal Jodoh & Hari Baik Nikah -->
+    <div class="date-picker-modal" id="jodohModal">
+        <div class="day-detail-box jodoh-box" id="jodohBox"></div>
     </div>
 
     <script>
@@ -1110,6 +1236,227 @@
 
         function closePrimbonModal() {
             document.getElementById('primbonModal').classList.remove('active');
+        }
+
+        // =====================================================================
+        // JODOH & HARI BAIK NIKAH
+        // Catatan: aturan petungan di bawah mengikuti metode yang umum beredar di
+        // masyarakat Jawa; sumber primbon bisa berbeda-beda. Semua aturan ada di
+        // konstanta berikut, jadi mudah disesuaikan.
+        // =====================================================================
+
+        // Kecocokan pasangan: (neptu pria + neptu wanita) % 8
+        const JODOH_PETUNG = {
+            1: { nama: 'Pegat',   tone: 'bad',  ket: 'Dipercaya rawan perselisihan hingga perpisahan; perlu banyak kesabaran dan saling pengertian.' },
+            2: { nama: 'Ratu',    tone: 'good', ket: 'Dipercaya membawa wibawa; pasangan disegani dan dihormati orang sekitar.' },
+            3: { nama: 'Jodoh',   tone: 'good', ket: 'Dipercaya saling cocok dan rukun dalam membina rumah tangga.' },
+            4: { nama: 'Topo',    tone: 'mid',  ket: 'Dipercaya awal rumah tangga penuh prihatin, namun kelak membaik dan bahagia.' },
+            5: { nama: 'Tinari',  tone: 'good', ket: 'Dipercaya mudah mendapat rezeki dan hidup berkecukupan.' },
+            6: { nama: 'Padu',    tone: 'mid',  ket: 'Dipercaya kerap berselisih paham, tetapi mudah berdamai kembali.' },
+            7: { nama: 'Sujanan', tone: 'bad',  ket: 'Dipercaya rawan godaan atau gangguan pihak ketiga; perlu saling menjaga kepercayaan.' },
+            0: { nama: 'Pesthi',  tone: 'good', ket: 'Dipercaya tentram, rukun, dan langgeng hingga akhir hayat.' }
+        };
+
+        // Gabungan neptu pria + wanita + hari akad: % 4
+        const GABUNGAN_NIKAH = {
+            3: { nama: 'Sri',     skor: 3,  ket: 'rezeki lancar, rumah tangga tentram' },
+            2: { nama: 'Gembili', skor: 2,  ket: 'rumah tangga subur dan rukun' },
+            1: { nama: 'Gentho',  skor: 0,  ket: 'dipercaya kurang baik untuk keturunan' },
+            0: { nama: 'Punggel', skor: -3, ket: 'dipercaya rawan perpisahan, sebaiknya dihindari' }
+        };
+
+        const SKOR_STATUS_ACARA = { 'sangat baik': 3, 'baik': 2, 'kurang baik': -1, 'hindari': -3 };
+
+        // Bulan Jawa (urutan Hijriyah) yang umumnya dihindari untuk hajatan nikah
+        const BULAN_HINDARI_NIKAH = { 1: 'Suro', 9: 'Pasa' };
+
+        const JODOH_MAX_HARI = 731;
+        const JODOH_MAX_TAMPIL = 60;
+        let jodohLast = null;
+
+        function toInputDate(d) {
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return d.getFullYear() + '-' + mm + '-' + dd;
+        }
+
+        function parseInputDate(str, afterMaghrib) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str || '');
+            if (!m) return null;
+            // Hari Jawa berganti saat Maghrib: lahir setelah Maghrib dihitung hari berikutnya
+            return new Date(+m[1], +m[2] - 1, +m[3] + (afterMaghrib ? 1 : 0));
+        }
+
+        function getWetonInfo(date) {
+            const dow = date.getDay();
+            const pas = getPasaran(date);
+            return { dow, pasaran: pas, neptu: getNeptu(dow, pas) };
+        }
+
+        function evaluasiHariNikah(date, neptuPria, neptuWanita) {
+            const w = getWetonInfo(date);
+            const pancasuda = getPancasuda(w.neptu);
+            const infoAcara = (PRIMBON_ACARA_MAP[pancasuda.nama] || {})['Pernikahan'] || { status: 'kurang baik' };
+            const gab = GABUNGAN_NIKAH[(neptuPria + neptuWanita + w.neptu) % 4];
+            const hijri = masehiToHijriyah(date.getFullYear(), date.getMonth(), date.getDate());
+            const bulanJawa = namaBulanSaka[hijri.month - 1] || '-';
+
+            const skor = (SKOR_STATUS_ACARA[infoAcara.status] || 0) + gab.skor;
+            let hindari = false;
+
+            if (infoAcara.status === 'hindari' || infoAcara.status === 'kurang baik') hindari = true;
+            if (gab.skor < 2) hindari = true;
+            if (BULAN_HINDARI_NIKAH[hijri.month]) hindari = true;
+            // Pasaran Pahing: pantangan hajatan besar/pesta (lihat PANTANGAN_PASARAN)
+            if (w.pasaran === 'Pahing') hindari = true;
+
+            let level = null;
+            if (!hindari && skor >= 4) level = skor >= 5 ? 'sangat baik' : 'baik';
+
+            return { date, w, pancasuda, gab, bulanJawa, skor, level };
+        }
+
+        function cariHariNikah(start, end, neptuPria, neptuWanita) {
+            const hasil = [];
+            const total = Math.round((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+                                      Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / 86400000);
+            for (let i = 0; i <= total; i++) {
+                const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+                const ev = evaluasiHariNikah(d, neptuPria, neptuWanita);
+                if (ev.level) hasil.push(ev);
+            }
+            return hasil;
+        }
+
+        function showJodohForm(prefill) {
+            const v = prefill || jodohLast || {};
+            const today = new Date();
+            const defEnd = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
+            const val = (k, def) => escapeHtml(v[k] !== undefined ? v[k] : def);
+            const chk = k => (v[k] ? 'checked' : '');
+
+            const html = `
+                <h3>Jodoh &amp; Hari Baik Nikah</h3>
+                <div class="tdd-dateline">Cari hari akad/resepsi yang cocok untuk kedua mempelai</div>
+
+                <div class="jodoh-person-title">Calon Pengantin Pria</div>
+                <div class="holiday-form-row">
+                    <label for="jodohLahirPria">Tanggal Lahir</label>
+                    <input type="date" id="jodohLahirPria" value="${val('lahirPria', '')}">
+                </div>
+                <label class="jodoh-check"><input type="checkbox" id="jodohMaghribPria" ${chk('maghribPria')}> Lahir setelah Maghrib (dihitung hari berikutnya)</label>
+
+                <div class="jodoh-person-title">Calon Pengantin Wanita</div>
+                <div class="holiday-form-row">
+                    <label for="jodohLahirWanita">Tanggal Lahir</label>
+                    <input type="date" id="jodohLahirWanita" value="${val('lahirWanita', '')}">
+                </div>
+                <label class="jodoh-check"><input type="checkbox" id="jodohMaghribWanita" ${chk('maghribWanita')}> Lahir setelah Maghrib (dihitung hari berikutnya)</label>
+
+                <div class="jodoh-person-title">Rentang Pencarian Tanggal Nikah</div>
+                <div class="holiday-form-row">
+                    <label for="jodohDari">Dari</label>
+                    <input type="date" id="jodohDari" value="${val('dari', toInputDate(today))}">
+                </div>
+                <div class="holiday-form-row">
+                    <label for="jodohSampai">Sampai</label>
+                    <input type="date" id="jodohSampai" value="${val('sampai', toInputDate(defEnd))}">
+                </div>
+
+                <div class="jodoh-error" id="jodohError"></div>
+                <div class="jodoh-actions">
+                    <button class="jodoh-btn-go" onclick="submitJodoh()">Cari Hari Baik</button>
+                    <button class="btn-cancel" onclick="closeJodohModal()">Tutup</button>
+                </div>
+            `;
+            document.getElementById('jodohBox').innerHTML = html;
+            document.getElementById('jodohModal').classList.add('active');
+        }
+
+        function submitJodoh() {
+            const input = {
+                lahirPria: document.getElementById('jodohLahirPria').value,
+                maghribPria: document.getElementById('jodohMaghribPria').checked,
+                lahirWanita: document.getElementById('jodohLahirWanita').value,
+                maghribWanita: document.getElementById('jodohMaghribWanita').checked,
+                dari: document.getElementById('jodohDari').value,
+                sampai: document.getElementById('jodohSampai').value
+            };
+            const err = msg => { document.getElementById('jodohError').textContent = msg; };
+
+            const dPria = parseInputDate(input.lahirPria, input.maghribPria);
+            const dWanita = parseInputDate(input.lahirWanita, input.maghribWanita);
+            const dari = parseInputDate(input.dari, false);
+            const sampai = parseInputDate(input.sampai, false);
+
+            if (!dPria || !dWanita) { err('Isi tanggal lahir calon pengantin pria dan wanita.'); return; }
+            if (!dari || !sampai) { err('Isi rentang tanggal pencarian.'); return; }
+            if (sampai < dari) { err('Tanggal "Sampai" harus setelah tanggal "Dari".'); return; }
+            const span = Math.round((sampai - dari) / 86400000);
+            if (span > JODOH_MAX_HARI) { err('Rentang pencarian maksimal 2 tahun.'); return; }
+
+            jodohLast = input;
+            showJodohResult(dPria, dWanita, dari, sampai);
+        }
+
+        function formatTanggalJodoh(d) {
+            return hari[d.getDay()] + ' ' + getPasaran(d) + ', ' + d.getDate() + ' ' + namaBulan[d.getMonth()] + ' ' + d.getFullYear();
+        }
+
+        function showJodohResult(dPria, dWanita, dari, sampai) {
+            const wp = getWetonInfo(dPria);
+            const ww = getWetonInfo(dWanita);
+            const kecocokan = JODOH_PETUNG[(wp.neptu + ww.neptu) % 8];
+            const toneClass = { good: 'jc-good', mid: 'jc-mid', bad: 'jc-bad' }[kecocokan.tone];
+
+            const hasil = cariHariNikah(dari, sampai, wp.neptu, ww.neptu);
+            const tampil = hasil.slice(0, JODOH_MAX_TAMPIL);
+
+            const listHtml = tampil.length ? tampil.map(r => `
+                <div class="jodoh-date-item">
+                    <div class="jodoh-date-top">
+                        <span class="jd-tgl">${formatTanggalJodoh(r.date)}</span>
+                        <span class="pa-status ${statusToClass(r.level)}">${r.level}</span>
+                    </div>
+                    <div class="pa-ket">Pancasuda ${r.pancasuda.nama} (${r.pancasuda.keterangan}) &middot; Gabungan ${r.gab.nama}: ${r.gab.ket} &middot; Bulan ${r.bulanJawa}</div>
+                </div>
+            `).join('') : `<div class="jodoh-empty">Tidak ada tanggal yang memenuhi kriteria pada rentang ini. Coba perluas rentang pencarian.</div>`;
+
+            const jumlahInfo = hasil.length > tampil.length
+                ? `Menampilkan ${tampil.length} dari ${hasil.length} tanggal. Persempit rentang untuk melihat sisanya.`
+                : `${hasil.length} tanggal ditemukan.`;
+
+            const html = `
+                <h3>Jodoh &amp; Hari Baik Nikah</h3>
+                <div class="jodoh-compat">
+                    <div class="jc-weton"><span>Pria</span><b>${hari[wp.dow]} ${wp.pasaran} (neptu ${wp.neptu})</b></div>
+                    <div class="jc-weton"><span>Wanita</span><b>${hari[ww.dow]} ${ww.pasaran} (neptu ${ww.neptu})</b></div>
+                    <div class="jc-weton"><span>Jumlah neptu</span><b>${wp.neptu + ww.neptu}</b></div>
+                    <div class="jc-hasil ${toneClass}"><b>Kecocokan: ${kecocokan.nama}</b><br>${kecocokan.ket}</div>
+                </div>
+
+                <div class="primbon-section-title">Hari Baik Nikah</div>
+                <div class="pa-ket" style="margin-bottom:4px;">${toInputDate(dari)} s/d ${toInputDate(sampai)} &mdash; ${jumlahInfo}</div>
+                ${listHtml}
+
+                <div class="primbon-disclaimer">
+                    <strong>Catatan</strong>
+                    Hari baik dihitung dari pancasuda hari akad, gabungan neptu kedua mempelai dengan hari akad, serta menghindari bulan Suro, bulan Pasa, dan pasaran Pahing (pantangan hajatan). Metode petungan dapat berbeda antar sumber primbon.
+                    <br><br>
+                    Konten ini disajikan sebagai warisan budaya dan tradisi Jawa, bukan bagian dari ajaran atau tuntunan agama mana pun. Jodoh, rezeki, dan nasib sepenuhnya berada di tangan Tuhan Yang Maha Esa; gunakan sebagai referensi budaya, bukan sandaran utama dalam mengambil keputusan hidup.
+                </div>
+
+                <div class="jodoh-actions">
+                    <button class="jodoh-btn-go" onclick="showJodohForm(jodohLast)">Ubah Data</button>
+                    <button class="btn-cancel" onclick="closeJodohModal()">Tutup</button>
+                </div>
+            `;
+            document.getElementById('jodohBox').innerHTML = html;
+            document.getElementById('jodohBox').scrollTop = 0;
+        }
+
+        function closeJodohModal() {
+            document.getElementById('jodohModal').classList.remove('active');
         }
 
         const namaBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER",
@@ -1657,6 +2004,10 @@ function getWinduSancaya(year) {
             const primbonModal = document.getElementById('primbonModal');
             if (e.target === primbonModal) {
                 closePrimbonModal();
+            }
+            const jodohModal = document.getElementById('jodohModal');
+            if (e.target === jodohModal) {
+                closeJodohModal();
             }
         });
 
