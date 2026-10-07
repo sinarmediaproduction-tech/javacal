@@ -846,6 +846,77 @@
             line-height: 1.5;
             color: #999;
         }
+        /* Modal Primbon Cuaca */
+        .cuaca-box {
+            width: 360px;
+        }
+        .cuaca-date-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0 4px 0;
+        }
+        .cuaca-date-row input {
+            font-size: 13px;
+            padding: 6px 8px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+        }
+        .cuaca-date-row button {
+            padding: 7px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #ccc;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .cuaca-date-row button:hover {
+            background-color: #aaa;
+        }
+        .cuaca-mangsa-nama {
+            font-family: 'Oswald', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #d32f2f;
+            text-transform: uppercase;
+            line-height: 1.15;
+            margin-top: 8px;
+        }
+        .cuaca-candra {
+            font-size: 12px;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .cuaca-bar {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #eee;
+            overflow: hidden;
+            margin: 6px 0 2px 0;
+        }
+        .cuaca-bar > div {
+            height: 100%;
+            background-color: #d32f2f;
+        }
+        .cuaca-list-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 11.5px;
+            text-align: left;
+            padding: 4px 6px;
+            border-radius: 4px;
+            color: #555;
+        }
+        .cuaca-list-item.now {
+            background-color: #d32f2f;
+            color: #fff;
+            font-weight: bold;
+        }
+
         /* Modal Jodoh & Hari Baik Nikah */
         .jodoh-box {
             width: 380px;
@@ -986,6 +1057,7 @@
         <div class="extra-menu-item" onclick="openHolidayForm()">Libur Nasional</div>
         <div class="extra-menu-item" onclick="showPrimbonToday()">Primbon Hari Ini</div>
         <div class="extra-menu-item" onclick="showJodohForm()">Jodoh &amp; Hari Nikah</div>
+        <div class="extra-menu-item" onclick="showCuaca()">Primbon Cuaca</div>
         <div class="extra-menu-item" id="installMenuItem" style="display:none;" onclick="installApp()">Pasang Aplikasi</div>
     </div>
     </div></div>
@@ -1035,6 +1107,11 @@
     <!-- Modal Jodoh & Hari Baik Nikah -->
     <div class="date-picker-modal" id="jodohModal">
         <div class="day-detail-box jodoh-box" id="jodohBox"></div>
+    </div>
+
+    <!-- Modal Primbon Cuaca (Pranata Mangsa) -->
+    <div class="date-picker-modal" id="cuacaModal">
+        <div class="day-detail-box cuaca-box" id="cuacaBox"></div>
     </div>
 
     <script>
@@ -1457,6 +1534,114 @@
 
         function closeJodohModal() {
             document.getElementById('jodohModal').classList.remove('active');
+        }
+
+        // =====================================================================
+        // PRIMBON CUACA (Pranata Mangsa)
+        // Memakai data pranataMangsa yang sama dengan footer kalender.
+        // =====================================================================
+        function getMangsaUntukTanggal(date) {
+            const t = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            for (let i = 0; i < pranataMangsa.length; i++) {
+                const pm = pranataMangsa[i];
+                for (const sy of [t.getFullYear() - 1, t.getFullYear()]) {
+                    const ey = pm.em < pm.sm ? sy + 1 : sy;
+                    const start = new Date(sy, pm.sm, pm.sd);
+                    let end = new Date(ey, pm.em, pm.ed);
+                    // Kawolu berakhir 28 Feb; di tahun kabisat, 29 Feb ikut Kawolu
+                    if (pm.em === 1 && pm.ed === 28 && new Date(ey, 1, 29).getMonth() === 1) end = new Date(ey, 1, 29);
+                    if (t >= start && t <= end) {
+                        const total = Math.round((end - start) / 86400000) + 1;
+                        const hariKe = Math.round((t - start) / 86400000) + 1;
+                        return { index: i, pm, start, end, total, hariKe, sisa: total - hariKe };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function fmtTglCuaca(d) {
+            return d.getDate() + ' ' + namaBulan[d.getMonth()] + ' ' + d.getFullYear();
+        }
+
+        function showCuaca(tglStr) {
+            const date = tglStr ? parseInputDate(tglStr, false) : new Date();
+            const base = date || new Date();
+            const info = getMangsaUntukTanggal(base);
+            const now = new Date();
+            const isToday = base.getFullYear() === now.getFullYear() && base.getMonth() === now.getMonth() && base.getDate() === now.getDate();
+
+            let isi;
+            if (!info) {
+                isi = '<div class="jodoh-empty">Data mangsa untuk tanggal ini tidak ditemukan.</div>';
+            } else {
+                const pm = info.pm;
+                const next = pranataMangsa[(info.index + 1) % pranataMangsa.length];
+                const nextStart = new Date(info.end.getFullYear(), info.end.getMonth(), info.end.getDate() + 1);
+                const persen = Math.round(info.hariKe / info.total * 100);
+                const kejadian = (pm.kejadian && pm.kejadian !== '-') ? pm.kejadian : null;
+
+                const daftar = pranataMangsa.map((m, i) => `
+                    <div class="cuaca-list-item ${i === info.index ? 'now' : ''}">
+                        <span>${m.id}. ${m.nama}</span>
+                        <span>${m.sd} ${namaBulan[m.sm].slice(0, 3)} &ndash; ${m.ed} ${namaBulan[m.em].slice(0, 3)}</span>
+                    </div>`).join('');
+
+                isi = `
+                    <div class="cuaca-mangsa-nama">Mangsa ${pm.nama} (${pm.id})</div>
+                    <div class="cuaca-candra">&ldquo;${pm.candra}&rdquo;</div>
+
+                    <div class="tdd-grid">
+                        <div class="tdd-row"><span class="tdd-label">Periode</span><span class="tdd-value">${fmtTglCuaca(info.start)} &ndash; ${fmtTglCuaca(info.end)}</span></div>
+                        <div class="tdd-row"><span class="tdd-label">Posisi</span><span class="tdd-value">Hari ke-${info.hariKe} dari ${info.total}</span></div>
+                    </div>
+                    <div class="cuaca-bar"><div style="width:${persen}%"></div></div>
+                    <div class="pa-ket" style="text-align:right;">${info.sisa === 0 ? 'Hari terakhir mangsa ini' : info.sisa + ' hari lagi ganti mangsa'}</div>
+
+                    <div class="primbon-section-title">Cuaca &amp; Angin</div>
+                    <ul class="primbon-pantangan-list">
+                        <li>${pm.cuaca}</li>
+                        <li>${pm.angin}</li>
+                    </ul>
+
+                    <div class="primbon-section-title">Dampak &amp; Kegiatan Tani</div>
+                    <ul class="primbon-pantangan-list">
+                        <li>${pm.dampak}</li>
+                        ${kejadian ? `<li>Kejadian: ${kejadian}</li>` : ''}
+                    </ul>
+
+                    <div class="primbon-section-title">Mangsa Berikutnya</div>
+                    <div class="pa-ket" style="font-size:12px;color:#333;">${next.nama} (${next.id}) mulai ${fmtTglCuaca(nextStart)}: ${next.cuaca.toLowerCase()}.</div>
+
+                    <div class="primbon-section-title">Setahun Penuh</div>
+                    ${daftar}
+                `;
+            }
+
+            const html = `
+                <h3>${isToday ? 'Primbon Cuaca Hari Ini' : 'Primbon Cuaca Tanggal'}</h3>
+                <div class="tdd-daybig">${hari[base.getDay()]}</div>
+                <div class="tdd-dateline">${fmtTglCuaca(base)} &mdash; ${hari[base.getDay()]} ${getPasaran(base)}</div>
+                <div class="cuaca-date-row">
+                    <input type="date" id="cuacaTanggal" value="${toInputDate(base)}" onchange="if(this.value) showCuaca(this.value)">
+                    <button onclick="showCuaca()">Hari Ini</button>
+                </div>
+                ${isi}
+                <div class="primbon-disclaimer">
+                    <strong>Catatan</strong>
+                    Pranata Mangsa adalah penanda musim tradisional Jawa untuk kalender pertanian, bukan ramalan cuaca harian. Kondisi sebenarnya dapat berbeda dari tahun ke tahun; untuk prakiraan cuaca terkini, rujuklah BMKG.
+                    <br><br>
+                    Konten ini disajikan sebagai warisan budaya dan tradisi Jawa, bukan bagian dari ajaran atau tuntunan agama mana pun.
+                </div>
+                <button class="btn-cancel" style="margin-top:16px;" onclick="closeCuacaModal()">Tutup</button>
+            `;
+            const box = document.getElementById('cuacaBox');
+            box.innerHTML = html;
+            document.getElementById('cuacaModal').classList.add('active');
+        }
+
+        function closeCuacaModal() {
+            document.getElementById('cuacaModal').classList.remove('active');
         }
 
         const namaBulan = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER",
@@ -2008,6 +2193,10 @@ function getWinduSancaya(year) {
             const jodohModal = document.getElementById('jodohModal');
             if (e.target === jodohModal) {
                 closeJodohModal();
+            }
+            const cuacaModal = document.getElementById('cuacaModal');
+            if (e.target === cuacaModal) {
+                closeCuacaModal();
             }
         });
 
